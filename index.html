@@ -353,6 +353,20 @@
             margin-bottom: 15px;
             font-size: 13px;
         }
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
         
         @media (max-width: 768px) {
             .tabs { gap: 5px; }
@@ -393,7 +407,7 @@
                 </div>
                 
                 <div class="input-group">
-                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr">
+                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="Sensor technology advances and future trends">
                     <button onclick="searchJournal()">🔍 فحص</button>
                 </div>
                 
@@ -407,6 +421,7 @@
                     <span onclick="setExampleAndType('New England Journal of Medicine', 'journal')">📚 مجلة (NEJM)</span> •
                     <span onclick="setExampleAndType('2772-6682', 'journal')">📰 ISSN</span> •
                     <span onclick="setExampleAndType('bibliometrix', 'work')">📝 بحث (كلمة)</span> •
+                    <span onclick="setExampleAndType('machine learning', 'work')">🤖 بحث عام</span> •
                     <span onclick="setExampleAndType('Science', 'work')">⚠️ كلمة مشتركة (كبحث)</span> •
                     <span onclick="setExampleAndType('Science', 'journal')">⚠️ كلمة مشتركة (كمجلة)</span>
                 </div>
@@ -513,13 +528,11 @@
             const radio = document.querySelector(`input[name="searchType"][value="${type}"]`);
             if (radio) {
                 radio.checked = true;
-                // تحديث التظليل
                 document.querySelectorAll('.radio-group label').forEach(label => {
                     label.classList.remove('active');
                 });
                 radio.closest('label').classList.add('active');
                 
-                // عرض/إخفاء التلميح
                 const hint = document.getElementById('searchHint');
                 const hintType = document.getElementById('hintType');
                 if (type === 'auto') {
@@ -537,7 +550,6 @@
             searchJournal();
         }
         
-        // إضافة مستمعين للأزرار الراديوية
         document.querySelectorAll('input[name="searchType"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 document.querySelectorAll('.radio-group label').forEach(label => {
@@ -561,12 +573,16 @@
         async function searchOpenAlexWork(query) {
             try {
                 let url;
+                
                 if (query.match(/^10\.\d{4,9}\/[-._;()\/:A-Z0-9]+$/i)) {
                     url = `https://api.openalex.org/works/doi/${encodeURIComponent(query)}`;
-                } else if (query.startsWith('W')) {
+                } 
+                else if (query.startsWith('W')) {
                     url = `https://api.openalex.org/works/${query}`;
-                } else {
-                    url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=1`;
+                } 
+                else {
+                    const encodedQuery = encodeURIComponent(query);
+                    url = `https://api.openalex.org/works?search=${encodedQuery}&per-page=15&sort=relevance_score:desc`;
                 }
                 
                 const controller = new AbortController();
@@ -577,12 +593,35 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
                 
-                if (data.results) {
-                    return { success: true, data: data.results[0] || null, type: 'work' };
+                if (data.results && data.results.length > 0) {
+                    return { 
+                        success: true, 
+                        data: data.results,
+                        type: 'work',
+                        isMultiple: data.results.length > 1,
+                        total: data.meta?.count || data.results.length
+                    };
                 }
-                return { success: true, data: data, type: 'work' };
+                
+                if (data.id) {
+                    return { 
+                        success: true, 
+                        data: [data],
+                        type: 'work',
+                        isMultiple: false,
+                        total: 1
+                    };
+                }
+                
+                return { 
+                    success: true, 
+                    data: [], 
+                    type: 'work',
+                    isMultiple: false,
+                    total: 0
+                };
             } catch (error) {
-                return { success: false, error: error.message, data: null };
+                return { success: false, error: error.message, data: [] };
             }
         }
 
@@ -593,7 +632,7 @@
                     let issn = query.replace('-', '');
                     url = `https://api.openalex.org/sources?filter=issn:${issn}`;
                 } else {
-                    url = `https://api.openalex.org/sources?search=${encodeURIComponent(query)}&per-page=1`;
+                    url = `https://api.openalex.org/sources?search=${encodeURIComponent(query)}&per-page=5`;
                 }
                 
                 const controller = new AbortController();
@@ -613,7 +652,6 @@
             }
         }
 
-        // دالة لفك الملخص
         function reconstructAbstract(invertedIndex) {
             if (!invertedIndex) return '';
             try {
@@ -649,7 +687,7 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
-        function renderOpenAlexWork(work) {
+        function renderOpenAlexWorkSingle(work) {
             if (!work) return '<div class="not-found-box"><p>❌ لم يتم العثور على البحث</p></div>';
             
             const abstract = work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : 'لا يتوفر ملخص';
@@ -699,7 +737,7 @@
                         <div class="section-title">👥 المؤلفون (${work.authorships.length})</div>
                         <div class="author-list">
                 `;
-                for (let author of work.authorships) {
+                for (let author of work.authorships.slice(0, 10)) {
                     html += `
                         <div class="author-card">
                             <div class="author-name">${escapeHtml(author.author.display_name || 'غير معروف')}</div>
@@ -736,6 +774,65 @@
             }
             
             html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من OpenAlex</summary><div class="raw-data">${JSON.stringify(work, null, 2)}</div></details>`;
+            
+            return html;
+        }
+
+        function renderOpenAlexWorksList(works, query) {
+            if (!works || works.length === 0) {
+                return `
+                    <div class="not-found-box">
+                        <p>❌ لم يتم العثور على بحث علمي بعنوان "${escapeHtml(query)}"</p>
+                        <p>💡 نصيحة: حاول البحث عن "مجلة" بدلاً من "بحث علمي"</p>
+                        <p>💡 أو استخدم كلمات مفتاحية أقصر وأكثر تحديداً</p>
+                        <p>💡 مثال: <span onclick="setExampleAndType('machine learning', 'work')" style="color:#667eea;cursor:pointer;">machine learning</span></p>
+                    </div>
+                `;
+            }
+            
+            if (works.length === 1) {
+                return renderOpenAlexWorkSingle(works[0]);
+            }
+            
+            let html = `
+                <div class="section">
+                    <div class="section-title">🔍 تم العثور على ${works.length} نتيجة بحث</div>
+                    <div class="info-note" style="margin-bottom: 15px;">
+                        💡 اختر البحث المناسب من القائمة أدناه لعرض التفاصيل الكاملة:
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+            `;
+            
+            for (let i = 0; i < works.length; i++) {
+                const work = works[i];
+                const abstract = work.abstract_inverted_index ? 
+                    reconstructAbstract(work.abstract_inverted_index).substring(0, 200) + '...' : 
+                    'لا يتوفر ملخص';
+                
+                html += `
+                    <div class="result-card" onclick="selectWork(${i})">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
+                            <h3 style="color: #667eea; margin-bottom: 10px; font-size: 18px;">📄 ${escapeHtml(work.title || 'بدون عنوان')}</h3>
+                            <span class="badge" style="background: #17a2b8;">📊 ${work.cited_by_count || 0} اقتباس</span>
+                        </div>
+                        <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+                            📅 ${work.publication_year || 'سنة غير معروفة'} | 
+                            📚 ${work.primary_source?.display_name || 'مجلة غير معروفة'} |
+                            🏷️ ${work.type || 'نوع غير محدد'}
+                        </div>
+                        ${work.doi ? `<div style="font-size: 12px; color: #999; margin-bottom: 8px;" dir="ltr">DOI: ${work.doi}</div>` : ''}
+                        <div style="font-size: 13px; color: #555; line-height: 1.5;">${escapeHtml(abstract)}</div>
+                        <div style="margin-top: 10px;">
+                            ${work.authorships?.slice(0, 3).map(a => `<span class="subject-tag">👤 ${escapeHtml(a.author.display_name?.split(' ')[0] || 'مؤلف')}</span>`).join('')}
+                            ${work.authorships?.length > 3 ? `<span class="subject-tag">+${work.authorships.length - 3} آخرين</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `</div></div>`;
+            
+            window.currentWorksList = works;
             
             return html;
         }
@@ -974,19 +1071,16 @@
             resultDiv.style.display = 'block';
             resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري البحث...</p></div>';
             
-            // إعادة تعيين البيانات
             currentScopusData = null;
             currentDOAJData = null;
             currentOpenAlexData = null;
             
             if (searchType === 'work') {
-                // بحث في OpenAlex فقط (أعمال بحثية)
                 const openAlexResult = await searchOpenAlexWork(query);
                 currentOpenAlexData = openAlexResult;
                 displayWorkResults();
             } 
             else if (searchType === 'journal') {
-                // بحث في Scopus + DOAJ + OpenAlex (مجلات)
                 const [scopusResult, doajResult, openAlexResult] = await Promise.all([
                     searchScopus(query),
                     searchDOAJ(query),
@@ -998,19 +1092,15 @@
                 displayJournalResults();
             }
             else {
-                // تلقائي - نحاول اكتشاف النوع
-                // نفحص أولاً إذا كان المدخل يبدو كـ DOI أو ISSN
                 const isDOI = query.match(/^10\.\d{4,9}\/[-._;()\/:A-Z0-9]+$/i);
                 const isISSN = query.match(/^\d{4}-\d{3}[\dX]$/i) || query.match(/^\d{8,9}$/);
                 
                 if (isDOI) {
-                    // DOI -> بحث في OpenAlex كعمل بحثي
                     const openAlexResult = await searchOpenAlexWork(query);
                     currentOpenAlexData = openAlexResult;
                     displayWorkResults();
                 } 
                 else if (isISSN) {
-                    // ISSN -> بحث في المصادر كمجلدات
                     const [scopusResult, doajResult, openAlexResult] = await Promise.all([
                         searchScopus(query),
                         searchDOAJ(query),
@@ -1022,9 +1112,8 @@
                     displayJournalResults();
                 }
                 else {
-                    // نص عادي - نجرب البحث في OpenAlex كأعمال أولاً، إذا لم نجد نجرب كمصادر
                     const openAlexWork = await searchOpenAlexWork(query);
-                    if (openAlexWork.success && openAlexWork.data) {
+                    if (openAlexWork.data && openAlexWork.data.length > 0) {
                         currentOpenAlexData = openAlexWork;
                         displayWorkResults();
                     } else {
@@ -1046,12 +1135,12 @@
             const container = document.getElementById('result');
             let html = getBlacklistResultsHTML(currentQuery);
             
-            const hasOpenAlex = currentOpenAlexData?.success && currentOpenAlexData.data;
+            const hasOpenAlex = currentOpenAlexData?.success && currentOpenAlexData.data && currentOpenAlexData.data.length > 0;
             
             html += `
                 <div class="journal-card">
                     <div class="journal-title">
-                        📄 نتيجة البحث العلمي
+                        📄 نتيجة البحث العلمي: "${escapeHtml(currentQuery)}"
                         ${hasOpenAlex ? `<span class="badge badge-openalex">OpenAlex</span>` : ''}
                     </div>
                     
@@ -1060,7 +1149,7 @@
                     </div>
                     
                     <div id="tab-openalex" class="tab-content active">
-                        ${hasOpenAlex ? renderOpenAlexWork(currentOpenAlexData.data) : '<div class="not-found-box"><p>❌ لم يتم العثور على بحث علمي بهذا الاسم</p><p>💡 نصيحة: جرب البحث عن "مجلة" بدلاً من "بحث علمي"</p></div>'}
+                        ${hasOpenAlex ? renderOpenAlexWorksList(currentOpenAlexData.data, currentQuery) : '<div class="not-found-box"><p>❌ لم يتم العثور على بحث علمي بهذا الاسم</p><p>💡 نصيحة: جرب البحث عن "مجلة" بدلاً من "بحث علمي"</p></div>'}
                     </div>
                 </div>
             `;
@@ -1135,6 +1224,25 @@
             });
         }
 
+        window.selectWork = function(index) {
+            const work = window.currentWorksList[index];
+            if (work) {
+                const container = document.getElementById('result');
+                let html = getBlacklistResultsHTML(currentQuery);
+                html += `
+                    <div class="journal-card">
+                        <div class="journal-title">
+                            📄 نتيجة البحث العلمي
+                            <span class="badge badge-openalex">OpenAlex</span>
+                            <button onclick="searchJournal()" style="float: left; background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🔍 بحث جديد</button>
+                        </div>
+                        ${renderOpenAlexWorkSingle(work)}
+                    </div>
+                `;
+                container.innerHTML = html;
+            }
+        };
+
         function escapeHtml(str) {
             if (!str) return '';
             return String(str).replace(/[&<>]/g, function(m) {
@@ -1158,6 +1266,11 @@
         window.setExample = setExample;
         window.setExampleAndType = setExampleAndType;
         window.searchJournal = searchJournal;
+        
+        // تنفيذ البحث تلقائياً عند تحميل الصفحة (للعرض)
+        setTimeout(() => {
+            searchJournal();
+        }, 1000);
     </script>
 </body>
 </html>
