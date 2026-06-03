@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مستكشف موثوقية المجلات العلمية: تدقيق شامل في Scopus و DOAJ مع التحقق من القوائم السوداء لوزارة التعليم العراقية وقوائم بيل للمجلات المفترسة.
-</title>
+    <title>مستكشف موثوقية المجلات والبحوث العلمية - تدقيق شامل في Scopus و DOAJ و OpenAlex</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -14,7 +13,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1300px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -74,6 +73,7 @@
             border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
+            transition: transform 0.2s;
         }
         .input-group button:hover { transform: translateY(-2px); }
         .example {
@@ -88,6 +88,7 @@
             margin: 0 5px;
             cursor: pointer;
         }
+        .example span:hover { background: #667eea; color: white; }
         .result { display: none; }
         .loading { text-align: center; padding: 40px; }
         .spinner {
@@ -207,6 +208,7 @@
             font-size: 12px;
             margin-right: 10px;
         }
+        .badge-openalex { background: #17a2b8; }
         .raw-data {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -252,6 +254,7 @@
             margin-bottom: 25px;
             border-bottom: 2px solid #e0e0e0;
             padding-bottom: 0;
+            flex-wrap: wrap;
         }
         .tab-btn {
             background: #f0f0f0;
@@ -282,73 +285,66 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .doaj-info {
+        .author-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .author-card {
             background: white;
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            min-width: 200px;
         }
-        .doaj-badge {
+        .author-name { font-weight: bold; color: #2c3e50; }
+        .author-orcid { font-size: 11px; color: #667eea; }
+        .institution { font-size: 12px; color: #666; }
+        .open-access-badge {
             display: inline-block;
-            background: #28a745;
-            color: white;
-            padding: 5px 15px;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        .doaj-badge.not-found {
-            background: #dc3545;
-        }
-        .apc-card {
-            background: linear-gradient(135deg, #ffd70015 0%, #ff8c0015 100%);
-            padding: 15px;
-            border-radius: 12px;
-            margin-top: 10px;
-            margin-bottom: 15px;
-        }
-        .license-card {
-            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
-        .doaj-section-title {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
-            color: #2c3e50;
-            margin: 15px 0 10px 0;
-            padding-right: 10px;
-            border-right: 3px solid #ffc107;
+        }
+        .oa-green { background: #d4edda; color: #155724; }
+        .oa-gold { background: #fff3cd; color: #856404; }
+        .oa-hybrid { background: #d1ecf1; color: #0c5460; }
+        .oa-bronze { background: #f8d7da; color: #721c24; }
+        .oa-closed { background: #e2e3e5; color: #383d41; }
+        
+        @media (max-width: 768px) {
+            .tabs { gap: 5px; }
+            .tab-btn { padding: 8px 15px; font-size: 12px; }
+            .info-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="university-header">
-            <div class="university-name"> الجامعة التقنية الشمالية</div>
-            <div class="college-name"> الكلية التقنية الهندسية - الموصل</div>
-            <div class="department-name"> تقنيات هندسة الصناعات الكيمياوية والنفطية</div>
+            <div class="university-name">الجامعة التقنية الشمالية</div>
+            <div class="college-name">الكلية التقنية الهندسية - الموصل</div>
+            <div class="department-name">تقنيات هندسة الصناعات الكيمياوية والنفطية</div>
             <div class="designer-name">تصميم: عزام عصام</div>
         </div>
         
         <div class="header">
-            <h1>مستكشف موثوقية المجلات العلمية: تدقيق شامل في Scopus و DOAJ مع التحقق من القوائم السوداء لوزارة التعليم العراقية وقوائم بيل للمجلات المفترسة.
-</h1>
-            <p>يعرض بيانات Scopus و DOAJ ويتحقق من وجود المجلة في القائمة السوداء</p>
+            <h1>مستكشف موثوقية المجلات والبحوث العلمية</h1>
+            <p>تدقيق شامل في Scopus و DOAJ و OpenAlex مع التحقق من القوائم السوداء</p>
         </div>
         <div class="content">
             <div class="search-section">
                 <div class="input-group">
-                    <input type="text" id="searchInput" placeholder="أدخل ISSN أو عنوان المجلة" dir="ltr">
-                    <button onclick="searchJournal()">🔍 فحص المجلة</button>
+                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr">
+                    <button onclick="searchJournal()">🔍 فحص</button>
                 </div>
                 <div class="example">
                     📝 أمثلة: 
-                    <span onclick="setExample('New England Journal of Medicine')">✅ NEJM</span> •
-                    <span onclick="setExample('Oncotarget')">⚠️ Oncotarget</span> •
-                    <span onclick="setExample('Korean Journal of Physiology and Pharmacology')">⚠️ Korean Journal</span> •
-                    <span onclick="setExample('Sensors International')">📚 Sensors International</span> •
-                    <span onclick="setExample('PLOS ONE')">📚 PLOS ONE</span>
+                    <span onclick="setExample('10.1016/j.joi.2017.08.007')">🔬 بحث (DOI)</span> •
+                    <span onclick="setExample('New England Journal of Medicine')">📚 مجلة (NEJM)</span> •
+                    <span onclick="setExample('2772-6682')">📰 ISSN</span> •
+                    <span onclick="setExample('bibliometrix')">📝 كلمة بحث</span>
                 </div>
                 <div id="listsStatus" class="list-status">🔄 جاري تحميل القوائم...</div>
             </div>
@@ -356,7 +352,7 @@
             <div id="result" class="result"></div>
         </div>
         <div class="footer">
-            <p>جميع البيانات مقدمة من Scopus API © Elsevier و DOAJ | يتم التحقق من القوائم السوداء المحلية</p>
+            <p>جميع البيانات مقدمة من Scopus API © Elsevier | DOAJ | OpenAlex (مجاني ومفتوح المصدر) | يتم التحقق من القوائم السوداء المحلية</p>
         </div>
     </div>
 
@@ -368,6 +364,7 @@
         let beallLowerCaseSet = new Set();
         let iraqLowerCaseSet = new Set();
         
+        // ========== دوال القوائم السوداء ==========
         function normalizeSimple(text) {
             if (!text) return '';
             return text.toLowerCase().trim();
@@ -415,11 +412,12 @@
             return html;
         }
 
+        // ========== تحميل القوائم ==========
         async function loadBeallList() {
             try {
                 const response = await fetch('beall_list.json?t=' + Date.now());
                 if (response.ok) { beallList = await response.json(); prepareLists(); updateListsStatus(); }
-                else { document.getElementById('listsStatus').innerHTML = '⚠️ فشل تحميل قائمة بيل'; }
+                else { document.getElementById('listsStatus').innerHTML = '⚠️ فشل تحميل قائمة بيل (ملف غير موجود)'; }
             } catch(e) { document.getElementById('listsStatus').innerHTML = '⚠️ خطأ في تحميل قائمة بيل'; }
         }
 
@@ -427,7 +425,7 @@
             try {
                 const response = await fetch('blacklist.json?t=' + Date.now());
                 if (response.ok) { iraqBlacklist = await response.json(); prepareLists(); updateListsStatus(); }
-                else { document.getElementById('listsStatus').innerHTML = '⚠️ فشل تحميل القائمة العراقية'; }
+                else { document.getElementById('listsStatus').innerHTML = '⚠️ فشل تحميل القائمة العراقية (ملف غير موجود)'; }
             } catch(e) { document.getElementById('listsStatus').innerHTML = '⚠️ خطأ في تحميل القائمة العراقية'; }
         }
 
@@ -436,40 +434,243 @@
             if (beallList.length > 0 && iraqBlacklist.length > 0) {
                 statusDiv.innerHTML = `✅ تم التحميل | 📋 بيل: ${beallList.length} | 🇮🇶 العراق: ${iraqBlacklist.length}`;
                 statusDiv.style.background = '#d4edda'; statusDiv.style.color = '#155724';
+            } else if (beallList.length > 0 || iraqBlacklist.length > 0) {
+                statusDiv.innerHTML = `⚠️ تم تحميل جزئي | بيل: ${beallList.length} | العراق: ${iraqBlacklist.length}`;
             }
         }
 
         loadBeallList();
         loadIraqBlacklist();
 
+        // ========== متغيرات البيانات ==========
         let currentScopusData = null;
         let currentDOAJData = null;
+        let currentOpenAlexData = null;
         let currentQuery = '';
+        let searchType = 'auto'; // auto, journal, work
 
-        async function searchJournal() {
-            const query = document.getElementById('searchInput').value.trim();
-            const resultDiv = document.getElementById('result');
-            currentQuery = query;
-            
-            if (!query) {
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = '<div class="error-message">❌ الرجاء إدخال ISSN أو عنوان المجلة</div>';
-                return;
+        // ========== OpenAlex API ==========
+        async function searchOpenAlex(query) {
+            try {
+                let url;
+                
+                // التحقق من نوع المعرف
+                if (query.match(/^10\.\d{4,9}\/[-._;()\/:A-Z0-9]+$/i)) {
+                    // DOI
+                    url = `https://api.openalex.org/works/doi/${encodeURIComponent(query)}`;
+                } else if (query.match(/^\d{4}-\d{3}[\dX]$/i) || query.match(/^\d{8,9}$/)) {
+                    // ISSN - نبحث عن مجلة
+                    let issn = query.replace('-', '');
+                    url = `https://api.openalex.org/sources?filter=issn:${issn}`;
+                } else if (query.startsWith('W')) {
+                    // OpenAlex ID
+                    url = `https://api.openalex.org/works/${query}`;
+                } else {
+                    // بحث عام - نجرب البحث عن أعمال أولاً
+                    url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=1`;
+                }
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                
+                // إذا كان بحثاً عاماً، نأخذ أول نتيجة
+                if (data.results) {
+                    return { success: true, data: data.results[0] || null, type: 'work' };
+                }
+                
+                // تحديد نوع النتيجة
+                let type = 'work';
+                if (data.sources || data.meta?.count > 0 && data.results?.[0]?.source_type) {
+                    type = 'source';
+                } else if (data.id?.includes('/sources/')) {
+                    type = 'source';
+                }
+                
+                return { success: true, data: data, type: type };
+            } catch (error) {
+                return { success: false, error: error.message, data: null };
             }
-            
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري البحث في Scopus و DOAJ...</p></div>';
-            
-            const scopusPromise = searchScopus(query);
-            const doajPromise = searchDOAJ(query);
-            
-            const [scopusResult, doajResult] = await Promise.all([scopusPromise, doajPromise]);
-            currentScopusData = scopusResult;
-            currentDOAJData = doajResult;
-            
-            displayResults();
         }
 
+        // دالة لفك الملخص من inverted index
+        function reconstructAbstract(invertedIndex) {
+            if (!invertedIndex) return '';
+            try {
+                const words = new Array(Math.max(...Object.values(invertedIndex).flat()) + 1);
+                for (const [word, positions] of Object.entries(invertedIndex)) {
+                    for (const pos of positions) {
+                        words[pos] = word;
+                    }
+                }
+                return words.join(' ');
+            } catch(e) {
+                return 'لا يمكن عرض الملخص';
+            }
+        }
+
+        // دالة للحصول على حالة الوصول المفتوح
+        function getOABadge(oaStatus) {
+            const statuses = {
+                'green': 'oa-green',
+                'gold': 'oa-gold', 
+                'hybrid': 'oa-hybrid',
+                'bronze': 'oa-bronze',
+                'closed': 'oa-closed'
+            };
+            const texts = {
+                'green': '🟢 وصول مفتوح (Green)',
+                'gold': '🟡 وصول مفتوح (Gold)',
+                'hybrid': '🔵 هجين (Hybrid)',
+                'bronze': '🟠 برونزي (Bronze)',
+                'closed': '🔴 مغلق'
+            };
+            const className = statuses[oaStatus] || 'oa-closed';
+            const text = texts[oaStatus] || 'غير محدد';
+            return `<span class="open-access-badge ${className}">${text}</span>`;
+        }
+
+        // عرض بيانات OpenAlex للعمل البحثي
+        function renderOpenAlexWork(work) {
+            if (!work) return '<div class="not-found-box"><p>❌ لم يتم العثور على البحث</p></div>';
+            
+            const abstract = work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : 'لا يتوفر ملخص';
+            const oaStatus = work.open_access?.oa_status || 'closed';
+            
+            let html = `
+                <div class="section">
+                    <div class="section-title">📄 معلومات البحث الأساسية</div>
+                    <div class="info-grid">
+                        <div class="info-item"><strong>العنوان</strong><span>${escapeHtml(work.title || 'غير متوفر')}</span></div>
+                        <div class="info-item"><strong>DOI</strong><span dir="ltr">${work.doi || 'غير متوفر'}</span></div>
+                        <div class="info-item"><strong>OpenAlex ID</strong><span dir="ltr">${work.id?.split('/').pop() || 'غير متوفر'}</span></div>
+                        <div class="info-item"><strong>سنة النشر</strong><span>${work.publication_year || 'غير متوفر'}</span></div>
+                        <div class="info-item"><strong>تاريخ النشر</strong><span>${work.publication_date || 'غير متوفر'}</span></div>
+                        <div class="info-item"><strong>نوع البحث</strong><span>${work.type || 'غير محدد'}</span></div>
+                        <div class="info-item"><strong>عدد الاقتباسات</strong><span>📊 ${work.cited_by_count || 0} اقتباس</span></div>
+                        <div class="info-item"><strong>حالة الوصول</strong><span>${getOABadge(oaStatus)}</span></div>
+                    </div>
+                </div>
+            `;
+            
+            // الملخص
+            if (abstract && abstract !== 'لا يتوفر ملخص') {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📝 الملخص</div>
+                        <div style="line-height:1.8; text-align:justify;">${escapeHtml(abstract)}</div>
+                    </div>
+                `;
+            }
+            
+            // معلومات المجلة المصدر
+            if (work.primary_source) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📚 المجلة المصدر</div>
+                        <div class="info-grid">
+                            <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(work.primary_source.display_name || 'غير متوفر')}</span></div>
+                            <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(work.primary_source.publisher || 'غير متوفر')}</span></div>
+                            <div class="info-item"><strong>ISSN</strong><span dir="ltr">${work.primary_source.issn_l || 'غير متوفر'}</span></div>
+                            <div class="info-item"><strong>نوع المصدر</strong><span>${work.primary_source.type || 'غير محدد'}</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // المؤلفون
+            if (work.authorships && work.authorships.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">👥 المؤلفون (${work.authorships.length})</div>
+                        <div class="author-list">
+                `;
+                for (let author of work.authorships) {
+                    html += `
+                        <div class="author-card">
+                            <div class="author-name">${escapeHtml(author.author.display_name || 'غير معروف')}</div>
+                            ${author.author.orcid ? `<div class="author-orcid">ORCID: ${author.author.orcid.split('/').pop()}</div>` : ''}
+                            ${author.institutions?.length ? `<div class="institution">${escapeHtml(author.institutions[0].display_name)}</div>` : ''}
+                            <div style="font-size:10px; color:#999;">${author.author_position || 'مؤلف'}</div>
+                        </div>
+                    `;
+                }
+                html += `</div></div>`;
+            }
+            
+            // التصنيفات والمفاهيم
+            if (work.concepts && work.concepts.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🏷️ التصنيفات والمفاهيم</div>
+                        <div>
+                `;
+                for (let concept of work.concepts.slice(0, 10)) {
+                    html += `<span class="subject-tag">${escapeHtml(concept.display_name)} (${Math.round(concept.score * 100)}%)</span>`;
+                }
+                html += `</div></div>`;
+            }
+            
+            // روابط النص الكامل
+            if (work.open_access?.oa_url || work.doi) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🔗 روابط الوصول</div>
+                        <div class="info-grid">
+                            ${work.doi ? `<div class="info-item"><strong>DOI URL</strong><span><a href="https://doi.org/${work.doi}" target="_blank">https://doi.org/${work.doi} →</a></span></div>` : ''}
+                            ${work.open_access?.oa_url ? `<div class="info-item"><strong>النص الكامل</strong><span><a href="${work.open_access.oa_url}" target="_blank">تحميل/عرض PDF →</a></span></div>` : ''}
+                            ${work.id ? `<div class="info-item"><strong>OpenAlex</strong><span><a href="${work.id}" target="_blank">عرض في OpenAlex →</a></span></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // البيانات الخام
+            html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من OpenAlex</summary><div class="raw-data">${JSON.stringify(work, null, 2)}</div></details>`;
+            
+            return html;
+        }
+
+        // عرض بيانات OpenAlex للمجلة
+        function renderOpenAlexSource(source) {
+            if (!source) return '<div class="not-found-box"><p>❌ لم يتم العثور على المجلة في OpenAlex</p></div>';
+            
+            let html = `
+                <div class="section">
+                    <div class="section-title">📚 معلومات المجلة (OpenAlex)</div>
+                    <div class="info-grid">
+                        <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(source.display_name || 'غير متوفر')}</span></div>
+                        <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.publisher || 'غير متوفر')}</span></div>
+                        <div class="info-item"><strong>ISSN</strong><span dir="ltr">${source.issn_l || source.issn?.join(', ') || 'غير متوفر'}</span></div>
+                        <div class="info-item"><strong>نوع المصدر</strong><span>${source.type || 'غير محدد'}</span></div>
+                        <div class="info-item"><strong>الوصول المفتوح</strong><span>${source.is_oa ? '✅ نعم' : '❌ لا'}</span></div>
+                    </div>
+                </div>
+            `;
+            
+            if (source.counts) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📊 إحصائيات المجلة</div>
+                        <div class="metrics-grid">
+                            <div class="metric-card"><div class="metric-value">${source.counts.works_count || 0}</div><div class="metric-label">عدد الأبحاث</div></div>
+                            <div class="metric-card"><div class="metric-value">${source.counts.cited_by_count || 0}</div><div class="metric-label">إجمالي الاقتباسات</div></div>
+                            <div class="metric-card"><div class="metric-value">${source.counts.oa_works_count || 0}</div><div class="metric-label">أبحاث مفتوحة الوصول</div></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من OpenAlex</summary><div class="raw-data">${JSON.stringify(source, null, 2)}</div></details>`;
+            
+            return html;
+        }
+
+        // ========== دوال Scopus و DOAJ الأصلية ==========
         async function searchScopus(query) {
             try {
                 let url;
@@ -516,60 +717,10 @@
             }
         }
 
-        function displayResults() {
-            const container = document.getElementById('result');
-            let html = getBlacklistResultsHTML(currentQuery);
-            
-            const hasScopusData = currentScopusData?.success && currentScopusData.data?.['serial-metadata-response']?.['entry'];
-            
-            if (!hasScopusData && (!currentDOAJData?.success || currentDOAJData.data?.total === 0)) {
-                html += `<div class="not-found-box"><span style="font-size:48px;">📭</span><h3>لم يتم العثور على المجلة</h3><p>المجلة غير مفهرسة في Scopus أو DOAJ</p></div>`;
-                container.innerHTML = html;
-                return;
-            }
-            
-            let journalTitle = currentQuery;
-            let scopusEntry = null;
-            if (hasScopusData) {
-                const serials = currentScopusData.data['serial-metadata-response']['entry'];
-                const journals = Array.isArray(serials) ? serials : [serials];
-                if (journals.length > 0) {
-                    scopusEntry = journals[0];
-                    journalTitle = scopusEntry['dc:title'] || journalTitle;
-                }
-            }
-            
-            html += `
-                <div class="journal-card">
-                    <div class="journal-title">
-                        📚 ${escapeHtml(journalTitle)}
-                        ${scopusEntry ? `<span class="badge">Scopus</span>` : ''}
-                        ${currentDOAJData?.success && currentDOAJData.data?.total > 0 ? `<span class="badge">DOAJ</span>` : ''}
-                    </div>
-                    
-                    <div class="tabs">
-                        <button class="tab-btn active" onclick="switchTab('scopus')">📊 Scopus</button>
-                        <button class="tab-btn" onclick="switchTab('doaj')">🌍 DOAJ</button>
-                    </div>
-                    
-                    <div id="tab-scopus" class="tab-content active">
-                        ${scopusEntry ? renderScopusContent(scopusEntry) : '<div class="not-found-box" style="margin:0"><p>❌ غير مفهرسة في Scopus</p></div>'}
-                    </div>
-                    
-                    <div id="tab-doaj" class="tab-content">
-                        ${renderDOAJContent(currentDOAJData, currentQuery)}
-                    </div>
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
-
         function renderScopusContent(j) {
             const publisher = j['dc:publisher'] || 'غير معروف';
             const issn = j['prism:issn'] || 'غير متوفر';
             const eIssn = j['prism:eIssn'] || 'غير متوفر';
-            const sourceType = j['prism:aggregationType'] || 'غير محدد';
             const sourceId = j['source-id'] || 'غير متوفر';
             const openaccess = j['openaccess'] === '1' ? 'نعم' : (j['openaccess'] === '0' ? 'لا' : 'غير محدد');
             const coverageStart = j['coverageStartYear'] || j['coverage-start-year']?.['$'] || 'غير متوفر';
@@ -583,22 +734,10 @@
                 sjrList = sjrItems.map(item => ({ year: item['@year'], value: item['$'] }));
             }
             
-            let snipList = [];
-            if (j['SNIPList']?.['SNIP']) {
-                const snipItems = Array.isArray(j['SNIPList']['SNIP']) ? j['SNIPList']['SNIP'] : [j['SNIPList']['SNIP']];
-                snipList = snipItems.map(item => ({ year: item['@year'], value: item['$'] }));
-            }
-            
             let subjects = [];
             if (j['subject-area']) {
                 const areas = Array.isArray(j['subject-area']) ? j['subject-area'] : [j['subject-area']];
                 subjects = areas.map(area => ({ name: area['$'] || 'غير محدد', code: area['@code'] || '' }));
-            }
-            
-            let links = [];
-            if (j['link']) {
-                const linkItems = Array.isArray(j['link']) ? j['link'] : [j['link']];
-                links = linkItems.map(link => ({ ref: link['@ref'], href: link['@href'] }));
             }
             
             let html = `
@@ -629,16 +768,8 @@
                 html += `<div class="section"><div class="section-title">⭐ SJR</div><div class="metrics-grid">${sjrList.map(sjr => `<div class="metric-card"><div class="metric-value">${sjr.value}</div><div class="metric-label">SJR</div><div class="metric-year">السنة: ${sjr.year}</div></div>`).join('')}</div></div>`;
             }
             
-            if (snipList.length > 0) {
-                html += `<div class="section"><div class="section-title">📈 SNIP</div><div class="metrics-grid">${snipList.map(snip => `<div class="metric-card"><div class="metric-value">${snip.value}</div><div class="metric-label">SNIP</div><div class="metric-year">السنة: ${snip.year}</div></div>`).join('')}</div></div>`;
-            }
-            
             if (subjects.length > 0) {
                 html += `<div class="section"><div class="section-title">🏷️ التصنيفات الموضوعية (Scopus)</div><div>${subjects.map(sub => `<span class="subject-tag">${escapeHtml(sub.name)} ${sub.code ? `(${sub.code})` : ''}</span>`).join('')}</div></div>`;
-            }
-            
-            if (links.length > 0) {
-                html += `<div class="section"><div class="section-title">🔗 الروابط</div><ul>${links.map(link => `<li><a href="${link.href}" target="_blank">${link.ref}</a></li>`).join('')}</ul></div>`;
             }
             
             html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من Scopus</summary><div class="raw-data">${JSON.stringify(j, null, 2)}</div></details>`;
@@ -658,7 +789,6 @@
             const journal = doajData.data.results[0];
             const bibjson = journal.bibjson || {};
             
-            // ========== الناشر ==========
             let publisherName = 'غير محدد';
             if (bibjson.publisher) {
                 if (typeof bibjson.publisher === 'object' && bibjson.publisher.name) {
@@ -668,25 +798,21 @@
                 }
             }
             
-            // ========== APC - التصحيح النهائي ==========
             let apcText = 'لا توجد معلومات';
             let apcPrice = null;
             let apcCurrency = null;
             
             if (bibjson.apc) {
-                // الحالة 1: وجود max array (كما في بيانات Sensors International)
                 if (bibjson.apc.max && Array.isArray(bibjson.apc.max) && bibjson.apc.max.length > 0) {
                     apcPrice = bibjson.apc.max[0].price;
                     apcCurrency = bibjson.apc.max[0].currency || '';
                     apcText = `💰 ${apcPrice} ${apcCurrency}`;
                 }
-                // الحالة 2: وجود max_price مباشر
                 else if (bibjson.apc.max_price) {
                     apcPrice = bibjson.apc.max_price;
                     apcCurrency = bibjson.apc.currency || '';
                     apcText = `💰 ${apcPrice} ${apcCurrency}`;
                 }
-                // الحالة 3: وجود has_apc فقط
                 else if (bibjson.apc.has_apc === true) {
                     apcText = '⚠️ توجد رسوم نشر (غير محددة)';
                 } else if (bibjson.apc.has_apc === false) {
@@ -694,14 +820,12 @@
                 }
             }
             
-            // ========== الترخيص ==========
             let licenseText = 'غير محدد';
             let licenseUrl = '';
             if (bibjson.license && bibjson.license.length > 0) {
                 const lic = bibjson.license[0];
-                if (lic.type) {
-                    licenseText = lic.type;
-                } else if (lic.BY && lic.NC && lic.ND) licenseText = 'CC BY-NC-ND';
+                if (lic.type) licenseText = lic.type;
+                else if (lic.BY && lic.NC && lic.ND) licenseText = 'CC BY-NC-ND';
                 else if (lic.BY && lic.NC) licenseText = 'CC BY-NC';
                 else if (lic.BY && lic.ND) licenseText = 'CC BY-ND';
                 else if (lic.BY && lic.SA) licenseText = 'CC BY-SA';
@@ -709,147 +833,127 @@
                 licenseUrl = lic.url || '';
             }
             
-            // حقوق النشر
-            let copyrightText = 'غير محدد';
-            if (bibjson.copyright) {
-                if (bibjson.copyright.author_retains === true) copyrightText = '✅ المؤلف يحتفظ بحقوق النشر';
-                else if (bibjson.copyright.author_retains === false) copyrightText = '❌ حقوق النشر تعود للناشر';
-                else if (bibjson.copyright.url) copyrightText = 'ℹ️ سياسة الحقوق متاحة عبر الرابط';
-            }
-            
-            // الحفظ الرقمي
-            let preservationText = 'غير محدد';
-            if (bibjson.preservation) {
-                if (bibjson.preservation.service && bibjson.preservation.service.length > 0) {
-                    preservationText = bibjson.preservation.service.join(', ');
-                } else if (bibjson.preservation.services && bibjson.preservation.services.length > 0) {
-                    preservationText = bibjson.preservation.services.join(', ');
-                }
-            }
-            
-            // اللغات
-            let languageText = 'غير محدد';
-            if (bibjson.language) {
-                languageText = Array.isArray(bibjson.language) ? bibjson.language.join(', ') : bibjson.language;
-            }
-            
-            // الكلمات المفتاحية
-            const keywords = bibjson.keywords || [];
-            
-            // التصنيفات
-            const subjects = bibjson.subject || [];
-            
-            // الروابط
-            const journalUrl = bibjson.ref?.journal || '';
-            const authorInstructions = bibjson.ref?.author_instructions || '';
-            const doajUrl = `https://doaj.org/journal/${journal.id}`;
-            const apcUrl = bibjson.apc?.url || '';
-            
             let html = `
                 <div class="doaj-info">
                     <div class="doaj-badge">✅ مفهرسة في DOAJ (دليل الوصول المفتوح)</div>
-                    
                     <div class="info-grid">
                         <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(publisherName)}</span></div>
                         <div class="info-item"><strong>الدولة</strong><span>${escapeHtml(bibjson.country || 'غير محدد')}</span></div>
-                        <div class="info-item"><strong>لغة النشر</strong><span>${escapeHtml(languageText)}</span></div>
+                        <div class="info-item"><strong>لغة النشر</strong><span>${escapeHtml(bibjson.language?.join?.(', ') || bibjson.language || 'غير محدد')}</span></div>
                     </div>
             `;
             
-            // عرض APC - مع دعم المصفوفة
             if (apcPrice) {
-                html += `
-                    <div class="apc-card">
-                        <strong>💰 رسوم النشر (Article Processing Charges - APC)</strong><br>
-                        <span style="font-size:22px; font-weight:bold; color:#2c3e50;">💰 ${apcPrice} ${apcCurrency}</span>
-                        ${apcUrl ? `<br><small><a href="${apcUrl}" target="_blank">📄 سياسة الرسوم</a></small>` : ''}
-                    </div>
-                `;
+                html += `<div class="apc-card"><strong>💰 رسوم النشر (APC)</strong><br><span style="font-size:22px; font-weight:bold;">💰 ${apcPrice} ${apcCurrency}</span></div>`;
             } else if (bibjson.apc?.has_apc === false) {
-                html += `
-                    <div class="apc-card" style="background:#d4edda;">
-                        <strong>💰 رسوم النشر (APC)</strong><br>
-                        <span style="font-size:18px; font-weight:bold; color:#155724;">✅ مجاني - لا توجد رسوم على النشر</span>
-                    </div>
-                `;
+                html += `<div class="apc-card" style="background:#d4edda;"><strong>💰 رسوم النشر (APC)</strong><br><span style="font-size:18px; font-weight:bold; color:#155724;">✅ مجاني - لا توجد رسوم على النشر</span></div>`;
             } else {
-                html += `
-                    <div class="apc-card">
-                        <strong>💰 رسوم النشر (APC)</strong><br>
-                        <span style="font-size:16px;">${escapeHtml(apcText)}</span>
-                    </div>
-                `;
+                html += `<div class="apc-card"><strong>💰 رسوم النشر (APC)</strong><br><span>${escapeHtml(apcText)}</span></div>`;
             }
             
-            // الترخيص
             html += `
-                <div class="license-card">
-                    <strong>📜 الترخيص</strong><br>
-                    <span style="font-size:18px; font-weight:bold;">${escapeHtml(licenseText)}</span>
-                    ${licenseUrl ? `<br><small><a href="${licenseUrl}" target="_blank">عرض الترخيص</a></small>` : ''}
+                <div class="license-card"><strong>📜 الترخيص</strong><br><span style="font-size:18px; font-weight:bold;">${escapeHtml(licenseText)}</span></div>
+                <details style="margin-top:15px;"><summary style="cursor:pointer;color:#667eea;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من DOAJ</summary><div class="raw-data">${JSON.stringify(journal, null, 2)}</div></details>
                 </div>
             `;
-            
-            // معلومات إضافية
-            html += `
-                <div class="info-grid">
-                    <div class="info-item"><strong>⚖️ سياسة حقوق النشر</strong><span>${escapeHtml(copyrightText)}</span></div>
-                    <div class="info-item"><strong>💾 سياسة الحفظ الرقمي</strong><span>${escapeHtml(preservationText)}</span></div>
-                    <div class="info-item"><strong>⏱️ فترة النشر (أسابيع)</strong><span>${bibjson.publication_time_weeks || 'غير محدد'}</span></div>
-                </div>
-            `;
-            
-            if (keywords.length > 0) {
-                html += `<div class="doaj-section-title">🔑 الكلمات المفتاحية</div><div>`;
-                for (let kw of keywords) {
-                    html += `<span class="subject-tag">${escapeHtml(kw)}</span>`;
-                }
-                html += `</div>`;
-            }
-            
-            if (subjects.length > 0) {
-                html += `<div class="doaj-section-title">🏷️ التصنيفات الموضوعية (DOAJ)</div><div>`;
-                for (let sub of subjects) {
-                    const term = sub.term || sub;
-                    const code = sub.code ? ` (${sub.code})` : '';
-                    html += `<span class="subject-tag">${escapeHtml(term)}${escapeHtml(code)}</span>`;
-                }
-                html += `</div>`;
-            }
-            
-            // الروابط
-            html += `<div class="doaj-section-title">🔗 روابط مهمة</div><div class="info-grid">`;
-            if (journalUrl) html += `<div class="info-item"><strong>موقع المجلة</strong><span><a href="${journalUrl}" target="_blank">زيارة الموقع →</a></span></div>`;
-            if (authorInstructions) html += `<div class="info-item"><strong>تعليمات النشر</strong><span><a href="${authorInstructions}" target="_blank">عرض التعليمات →</a></span></div>`;
-            html += `<div class="info-item"><strong>DOAJ</strong><span><a href="${doajUrl}" target="_blank">عرض في DOAJ →</a></span></div>`;
-            html += `</div>`;
-            
-            html += `<details style="margin-top:15px;"><summary style="cursor:pointer;color:#667eea;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من DOAJ</summary><div class="raw-data">${JSON.stringify(journal, null, 2)}</div></details>`;
-            html += `</div>`;
             
             return html;
         }
 
-        function switchTab(tabName) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            tabs.forEach(btn => btn.classList.remove('active'));
-            if (tabName === 'scopus') {
-                if (tabs[0]) tabs[0].classList.add('active');
-            } else {
-                if (tabs[1]) tabs[1].classList.add('active');
+        // ========== الدالة الرئيسية ==========
+        async function searchJournal() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            currentQuery = query;
+            
+            if (!query) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<div class="error-message">❌ الرجاء إدخال DOI / ISSN / عنوان المجلة أو البحث</div>';
+                return;
             }
             
-            const tabScopus = document.getElementById('tab-scopus');
-            const tabDoaj = document.getElementById('tab-doaj');
-            if (tabScopus && tabDoaj) {
-                tabScopus.classList.remove('active');
-                tabDoaj.classList.remove('active');
-                if (tabName === 'scopus') {
-                    tabScopus.classList.add('active');
-                } else {
-                    tabDoaj.classList.add('active');
-                }
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري البحث في Scopus و DOAJ و OpenAlex...</p></div>';
+            
+            // البحث بالتوازي في جميع المصادر
+            const [scopusResult, doajResult, openAlexResult] = await Promise.all([
+                searchScopus(query),
+                searchDOAJ(query),
+                searchOpenAlex(query)
+            ]);
+            
+            currentScopusData = scopusResult;
+            currentDOAJData = doajResult;
+            currentOpenAlexData = openAlexResult;
+            
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('result');
+            let html = getBlacklistResultsHTML(currentQuery);
+            
+            const hasScopusData = currentScopusData?.success && currentScopusData.data?.['serial-metadata-response']?.['entry'];
+            let scopusEntry = null;
+            if (hasScopusData) {
+                const serials = currentScopusData.data['serial-metadata-response']['entry'];
+                const journals = Array.isArray(serials) ? serials : [serials];
+                if (journals.length > 0) scopusEntry = journals[0];
             }
+            
+            const hasDOAJData = currentDOAJData?.success && currentDOAJData.data?.total > 0;
+            const hasOpenAlex = currentOpenAlexData?.success && currentOpenAlexData.data;
+            
+            let journalTitle = currentQuery;
+            if (scopusEntry) journalTitle = scopusEntry['dc:title'] || journalTitle;
+            
+            html += `
+                <div class="journal-card">
+                    <div class="journal-title">
+                        📚 ${escapeHtml(journalTitle)}
+                        ${scopusEntry ? `<span class="badge">Scopus</span>` : ''}
+                        ${hasDOAJData ? `<span class="badge">DOAJ</span>` : ''}
+                        ${hasOpenAlex ? `<span class="badge badge-openalex">OpenAlex</span>` : ''}
+                    </div>
+                    
+                    <div class="tabs">
+                        <button class="tab-btn ${hasOpenAlex ? 'active' : ''}" onclick="switchTab('openalex')">🌐 OpenAlex</button>
+                        <button class="tab-btn ${!hasOpenAlex && scopusEntry ? 'active' : ''}" onclick="switchTab('scopus')">📊 Scopus</button>
+                        <button class="tab-btn" onclick="switchTab('doaj')">🌍 DOAJ</button>
+                    </div>
+                    
+                    <div id="tab-openalex" class="tab-content ${hasOpenAlex ? 'active' : ''}">
+                        ${hasOpenAlex ? (currentOpenAlexData.type === 'work' ? renderOpenAlexWork(currentOpenAlexData.data) : renderOpenAlexSource(currentOpenAlexData.data)) : '<div class="not-found-box"><p>❌ لم يتم العثور على نتائج في OpenAlex</p></div>'}
+                    </div>
+                    
+                    <div id="tab-scopus" class="tab-content ${!hasOpenAlex && scopusEntry ? 'active' : ''}">
+                        ${scopusEntry ? renderScopusContent(scopusEntry) : '<div class="not-found-box"><p>❌ غير مفهرسة في Scopus</p></div>'}
+                    </div>
+                    
+                    <div id="tab-doaj" class="tab-content">
+                        ${renderDOAJContent(currentDOAJData, currentQuery)}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        function switchTab(tabName) {
+            const tabs = ['openalex', 'scopus', 'doaj'];
+            tabs.forEach(tab => {
+                const btn = document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`);
+                const content = document.getElementById(`tab-${tab}`);
+                if (btn && content) {
+                    if (tab === tabName) {
+                        btn.classList.add('active');
+                        content.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                        content.classList.remove('active');
+                    }
+                }
+            });
         }
 
         function escapeHtml(str) {
@@ -859,6 +963,8 @@
                 if (m === '<') return '&lt;';
                 if (m === '>') return '&gt;';
                 return m;
+            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                return c;
             });
         }
         
@@ -872,6 +978,8 @@
         });
         
         window.switchTab = switchTab;
+        window.setExample = setExample;
+        window.searchJournal = searchJournal;
     </script>
 </body>
 </html>
