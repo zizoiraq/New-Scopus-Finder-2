@@ -224,6 +224,7 @@
         }
         .metric-value { font-size: 28px; font-weight: bold; color: #667eea; }
         .metric-label { font-size: 12px; color: #666; margin-top: 5px; }
+        .metric-note { font-size: 10px; color: #999; margin-top: 3px; }
         .subject-tag {
             display: inline-block;
             background: #e9ecef;
@@ -583,7 +584,6 @@
         // ========== دالة مقارنة العناوين للتطابق التام ==========
         function isExactMatch(title, query) {
             if (!title || !query) return false;
-            // تطبيع النصوص: إزالة المسافات الزائدة، تحويل إلى أحرف صغيرة، مقارنة
             const normalizeTitle = title.toLowerCase().trim().replace(/\s+/g, ' ');
             const normalizeQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
             return normalizeTitle === normalizeQuery;
@@ -614,7 +614,6 @@
                 const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
-                    // البحث عن تطابق تام
                     let exactMatch = null;
                     for (let work of data.results) {
                         if (work.title && isExactMatch(work.title, query)) {
@@ -726,11 +725,190 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
+        // دالة عرض المعلومات المتقدمة من OpenAlex
+        function renderAdvancedWorkInfo(work) {
+            let html = '';
+            
+            // معلومات المجلة المصدر (الأهم!)
+            const source = work.primary_location?.source || work.primary_source;
+            if (source) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📚 المجلة المصدر</div>
+                        <div class="info-grid">
+                            <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(source.display_name || 'غير متوفر')}</span></div>
+                            <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.host_organization_name || source.publisher || 'غير متوفر')}</span></div>
+                            <div class="info-item"><strong>ISSN</strong><span dir="ltr">${source.issn_l || source.issn?.join(', ') || 'غير متوفر'}</span></div>
+                            <div class="info-item"><strong>نوع المصدر</strong><span>${source.type === 'journal' ? '📖 دورية علمية' : source.type || 'غير محدد'}</span></div>
+                            <div class="info-item"><strong>مفهرسة في DOAJ</strong><span>${source.is_in_doaj ? '✅ نعم' : '❌ لا'}</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // مقاييس التأثير (FWCI, Percentile)
+            const percentile = work.citation_normalized_percentile;
+            const fwci = work.fwci;
+            html += `
+                <div class="section">
+                    <div class="section-title">📊 مقاييس التأثير والاقتباس</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">${work.cited_by_count || 0}</div>
+                            <div class="metric-label">إجمالي الاقتباسات</div>
+                        </div>
+                        ${fwci ? `
+                        <div class="metric-card">
+                            <div class="metric-value">${fwci}</div>
+                            <div class="metric-label">FWCI (قوة البحث)</div>
+                            <div class="metric-note">FWCI > 1 يعني أفضل من المعدل</div>
+                        </div>
+                        ` : ''}
+                        ${percentile ? `
+                        <div class="metric-card">
+                            <div class="metric-value">${Math.round(percentile.value * 100)}%</div>
+                            <div class="metric-label">التصنيف المئوي</div>
+                            <div class="metric-note">${percentile.is_in_top_10_percent ? '🏆 ضمن أفضل 10%' : percentile.is_in_top_1_percent ? '🏆 ضمن أفضل 1%' : ''}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // تفاصيل النشر (المجلد، العدد، الصفحات)
+            if (work.biblio && (work.biblio.volume || work.biblio.issue || work.biblio.first_page)) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📖 تفاصيل النشر</div>
+                        <div class="info-grid">
+                            ${work.biblio.volume ? `<div class="info-item"><strong>المجلد</strong><span>${work.biblio.volume}</span></div>` : ''}
+                            ${work.biblio.issue ? `<div class="info-item"><strong>العدد</strong><span>${work.biblio.issue}</span></div>` : ''}
+                            ${work.biblio.first_page ? `<div class="info-item"><strong>الصفحات</strong><span>${work.biblio.first_page} - ${work.biblio.last_page || ''}</span></div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // الموضوع الأساسي (Primary Topic) - الأهم
+            if (work.primary_topic) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">⭐ الموضوع الأساسي</div>
+                        <div class="info-grid">
+                            <div class="info-item"><strong>المجال</strong><span>${escapeHtml(work.primary_topic.field?.display_name || 'غير محدد')}</span></div>
+                            <div class="info-item"><strong>الحقل الفرعي</strong><span>${escapeHtml(work.primary_topic.subfield?.display_name || 'غير محدد')}</span></div>
+                            <div class="info-item"><strong>الموضوع</strong><span>${escapeHtml(work.primary_topic.display_name)}</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // المواضيع الرئيسية (Topics)
+            if (work.topics && work.topics.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🏷️ المواضيع الرئيسية (Topics)</div>
+                        <div>
+                `;
+                for (let topic of work.topics.slice(0, 5)) {
+                    html += `
+                        <div class="subject-tag" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);">
+                            ${escapeHtml(topic.display_name)} 
+                            <span style="font-size: 10px; color: #667eea;">(${Math.round(topic.score * 100)}%)</span>
+                        </div>
+                    `;
+                }
+                html += `</div></div>`;
+            }
+            
+            // الكلمات المفتاحية (Keywords)
+            if (work.keywords && work.keywords.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🔑 الكلمات المفتاحية</div>
+                        <div>
+                `;
+                for (let kw of work.keywords.slice(0, 10)) {
+                    html += `<span class="subject-tag">${escapeHtml(kw.display_name)}</span>`;
+                }
+                html += `</div></div>`;
+            }
+            
+            // أهداف التنمية المستدامة (SDGs)
+            if (work.sustainable_development_goals && work.sustainable_development_goals.length > 0) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🌍 أهداف التنمية المستدامة</div>
+                        <div>
+                `;
+                for (let sdg of work.sustainable_development_goals) {
+                    html += `<span class="subject-tag" style="background: #d4edda; color: #155724;">🎯 ${escapeHtml(sdg.display_name)}</span>`;
+                }
+                html += `</div></div>`;
+            }
+            
+            // المؤلف المراسل
+            const correspondingAuthor = work.authorships?.find(a => a.is_corresponding);
+            if (correspondingAuthor) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">✉️ المؤلف المراسل</div>
+                        <div class="author-card" style="max-width: 300px;">
+                            <div class="author-name">${escapeHtml(correspondingAuthor.author.display_name)}</div>
+                            ${correspondingAuthor.author.orcid ? `<div class="author-orcid">ORCID: ${correspondingAuthor.author.orcid.split('/').pop()}</div>` : ''}
+                            ${correspondingAuthor.institutions?.length ? `<div class="institution">🏛️ ${escapeHtml(correspondingAuthor.institutions[0].display_name)}</div>` : ''}
+                            ${correspondingAuthor.countries?.length ? `<div class="institution">🌍 ${correspondingAuthor.countries[0]}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // الاقتباسات حسب السنة
+            if (work.counts_by_year && work.counts_by_year.length > 0) {
+                const recentYears = work.counts_by_year.slice(0, 5);
+                html += `
+                    <div class="section">
+                        <div class="section-title">📈 الاقتباسات في السنوات الأخيرة</div>
+                        <div class="metrics-grid">
+                `;
+                for (let yearData of recentYears) {
+                    html += `
+                        <div class="metric-card">
+                            <div class="metric-value">${yearData.cited_by_count}</div>
+                            <div class="metric-label">${yearData.year}</div>
+                        </div>
+                    `;
+                }
+                html += `</div></div>`;
+            }
+            
+            // حالة الوصول المفتوح
+            if (work.open_access) {
+                const oaStatus = work.open_access.oa_status || 'closed';
+                html += `
+                    <div class="section">
+                        <div class="section-title">🔓 الوصول إلى النص الكامل</div>
+                        <div class="info-grid">
+                            <div class="info-item"><strong>حالة الوصول المفتوح</strong><span>${getOABadge(oaStatus)}</span></div>
+                            ${work.open_access.oa_url ? `<div class="info-item"><strong>رابط النص الكامل</strong><span><a href="${work.open_access.oa_url}" target="_blank">📄 تحميل PDF ←</a></span></div>` : ''}
+                            <div class="info-item"><strong>النسخة المنشورة</strong><span>${work.primary_location?.is_published ? '✅ نعم' : '❌ لا'}</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // حالة الاقتباس (هل هو مقتطف/ملحق؟)
+            if (work.is_retracted) {
+                html += `<div class="danger-message">⚠️ هذا البحث مسحوب (Retracted)!</div>`;
+            }
+            
+            return html;
+        }
+
         function renderOpenAlexWorkSingle(work, isExact = true) {
             if (!work) return '<div class="not-found-box"><p>❌ لم يتم العثور على البحث</p></div>';
             
             const abstract = work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : 'لا يتوفر ملخص';
-            const oaStatus = work.open_access?.oa_status || 'closed';
             
             let html = `
                 <div class="section">
@@ -738,12 +916,10 @@
                     <div class="info-grid">
                         <div class="info-item"><strong>العنوان</strong><span>${escapeHtml(work.title || 'غير متوفر')}</span></div>
                         <div class="info-item"><strong>DOI</strong><span dir="ltr">${work.doi || 'غير متوفر'}</span></div>
-                        <div class="info-item"><strong>OpenAlex ID</strong><span dir="ltr">${work.id?.split('/').pop() || 'غير متوفر'}</span></div>
                         <div class="info-item"><strong>سنة النشر</strong><span>${work.publication_year || 'غير متوفر'}</span></div>
-                        <div class="info-item"><strong>تاريخ النشر</strong><span>${work.publication_date || 'غير متوفر'}</span></div>
-                        <div class="info-item"><strong>نوع البحث</strong><span>${work.type || 'غير محدد'}</span></div>
+                        <div class="info-item"><strong>نوع البحث</strong><span>${work.type === 'article' ? '📄 مقالة' : work.type === 'review' ? '📚 مراجعة' : work.type || 'غير محدد'}</span></div>
                         <div class="info-item"><strong>عدد الاقتباسات</strong><span>📊 ${work.cited_by_count || 0} اقتباس</span></div>
-                        <div class="info-item"><strong>حالة الوصول</strong><span>${getOABadge(oaStatus)}</span></div>
+                        <div class="info-item"><strong>اللغة</strong><span>${work.language === 'en' ? '🇬🇧 إنجليزي' : work.language || 'غير محدد'}</span></div>
                     </div>
                 </div>
             `;
@@ -757,19 +933,10 @@
                 `;
             }
             
-            if (work.primary_source) {
-                html += `
-                    <div class="section">
-                        <div class="section-title">📚 المجلة المصدر</div>
-                        <div class="info-grid">
-                            <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(work.primary_source.display_name || 'غير متوفر')}</span></div>
-                            <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(work.primary_source.publisher || 'غير متوفر')}</span></div>
-                            <div class="info-item"><strong>ISSN</strong><span dir="ltr">${work.primary_source.issn_l || 'غير متوفر'}</span></div>
-                        </div>
-                    </div>
-                `;
-            }
+            // إضافة المعلومات المتقدمة
+            html += renderAdvancedWorkInfo(work);
             
+            // المؤلفون
             if (work.authorships && work.authorships.length > 0) {
                 html += `
                     <div class="section">
@@ -781,49 +948,49 @@
                         <div class="author-card">
                             <div class="author-name">${escapeHtml(author.author.display_name || 'غير معروف')}</div>
                             ${author.author.orcid ? `<div class="author-orcid">ORCID: ${author.author.orcid.split('/').pop()}</div>` : ''}
-                            ${author.institutions?.length ? `<div class="institution">${escapeHtml(author.institutions[0].display_name)}</div>` : ''}
+                            ${author.institutions?.length ? `<div class="institution">🏛️ ${escapeHtml(author.institutions[0].display_name)}</div>` : ''}
+                            ${author.countries?.length ? `<div class="institution">🌍 ${author.countries[0]}</div>` : ''}
+                            ${author.is_corresponding ? '<span class="badge" style="background:#17a2b8; font-size:10px;">✉️ مراسل</span>' : ''}
                         </div>
                     `;
                 }
                 html += `</div></div>`;
             }
             
-            if (work.concepts && work.concepts.length > 0) {
+            // الأعمال المرجعية
+            if (work.referenced_works && work.referenced_works.length > 0) {
                 html += `
                     <div class="section">
-                        <div class="section-title">🏷️ التصنيفات والمفاهيم</div>
-                        <div>
-                `;
-                for (let concept of work.concepts.slice(0, 10)) {
-                    html += `<span class="subject-tag">${escapeHtml(concept.display_name)} (${Math.round(concept.score * 100)}%)</span>`;
-                }
-                html += `</div></div>`;
-            }
-            
-            if (work.open_access?.oa_url || work.doi) {
-                html += `
-                    <div class="section">
-                        <div class="section-title">🔗 روابط الوصول</div>
-                        <div class="info-grid">
-                            ${work.doi ? `<div class="info-item"><strong>DOI URL</strong><span><a href="https://doi.org/${work.doi}" target="_blank">https://doi.org/${work.doi} →</a></span></div>` : ''}
-                            ${work.open_access?.oa_url ? `<div class="info-item"><strong>النص الكامل</strong><span><a href="${work.open_access.oa_url}" target="_blank">تحميل/عرض PDF →</a></span></div>` : ''}
+                        <div class="section-title">📚 المراجع (${work.referenced_works_count || work.referenced_works.length})</div>
+                        <div style="font-size:12px; color:#666;">
+                            هذا البحث استشهد بـ ${work.referenced_works.length} مرجع علمي
                         </div>
                     </div>
                 `;
             }
+            
+            // روابط
+            html += `
+                <div class="section">
+                    <div class="section-title">🔗 روابط مهمة</div>
+                    <div class="info-grid">
+                        ${work.doi ? `<div class="info-item"><strong>DOI URL</strong><span><a href="https://doi.org/${work.doi}" target="_blank">https://doi.org/${work.doi} →</a></span></div>` : ''}
+                        ${work.id ? `<div class="info-item"><strong>OpenAlex</strong><span><a href="${work.id}" target="_blank">عرض في OpenAlex →</a></span></div>` : ''}
+                    </div>
+                </div>
+            `;
             
             html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من OpenAlex</summary><div class="raw-data">${JSON.stringify(work, null, 2)}</div></details>`;
             
             return html;
         }
 
-        function renderOpenAlexWorksList(works, query, hasExactMatch) {
+        function renderOpenAlexWorksList(works, query) {
             if (!works || works.length === 0) {
                 return `
                     <div class="not-found-box">
                         <p>❌ لم يتم العثور على أي بحث علمي بعنوان "${escapeHtml(query)}"</p>
                         <p>💡 نصيحة: جرب البحث عن "مجلة" بدلاً من "بحث علمي"</p>
-                        <p>💡 أو استخدم كلمات مفتاحية أقصر وأكثر تحديداً</p>
                     </div>
                 `;
             }
@@ -846,9 +1013,10 @@
                     reconstructAbstract(work.abstract_inverted_index).substring(0, 200) + '...' : 
                     'لا يتوفر ملخص';
                 
-                // حساب نسبة التشابه التقريبية
                 const similarity = work.title ? 
                     Math.round((1 - levenshteinDistance(work.title.toLowerCase(), query.toLowerCase()) / Math.max(work.title.length, query.length)) * 100) : 0;
+                
+                const sourceName = work.primary_location?.source?.display_name || work.primary_source?.display_name || 'مجلة غير معروفة';
                 
                 html += `
                     <div class="result-card" onclick="selectWork(${i})">
@@ -861,8 +1029,8 @@
                         </div>
                         <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
                             📅 ${work.publication_year || 'سنة غير معروفة'} | 
-                            📚 ${work.primary_source?.display_name || 'مجلة غير معروفة'} |
-                            🏷️ ${work.type || 'نوع غير محدد'}
+                            📚 ${escapeHtml(sourceName)} |
+                            🏷️ ${work.type === 'article' ? 'مقالة' : work.type === 'review' ? 'مراجعة' : work.type || 'نوع غير محدد'}
                         </div>
                         ${work.doi ? `<div style="font-size: 12px; color: #999; margin-bottom: 8px;" dir="ltr">DOI: ${work.doi}</div>` : ''}
                         <div style="font-size: 13px; color: #555; line-height: 1.5;">${escapeHtml(abstract)}</div>
@@ -881,7 +1049,7 @@
             return html;
         }
         
-        // دالة لحساب مسافة ليفنشتاين (نسبة التشابه بين النصوص)
+        // دالة لحساب مسافة ليفنشتاين (نسبة التشابه)
         function levenshteinDistance(a, b) {
             const matrix = [];
             for (let i = 0; i <= b.length; i++) matrix[i] = [i];
@@ -909,7 +1077,7 @@
                         <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(source.display_name || 'غير متوفر')}</span></div>
                         <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.publisher || 'غير متوفر')}</span></div>
                         <div class="info-item"><strong>ISSN</strong><span dir="ltr">${source.issn_l || source.issn?.join(', ') || 'غير متوفر'}</span></div>
-                        <div class="info-item"><strong>نوع المصدر</strong><span>${source.type || 'غير محدد'}</span></div>
+                        <div class="info-item"><strong>نوع المصدر</strong><span>${source.type === 'journal' ? '📖 دورية علمية' : source.type || 'غير محدد'}</span></div>
                         <div class="info-item"><strong>الوصول المفتوح</strong><span>${source.is_oa ? '✅ نعم' : '❌ لا'}</span></div>
                     </div>
                 </div>
@@ -1211,11 +1379,9 @@
             `;
             
             if (hasExactMatch && exactMatchWork) {
-                // يوجد تطابق تام - نعرضه مباشرة
                 html += renderOpenAlexWorkSingle(exactMatchWork, true);
             } else {
-                // لا يوجد تطابق تام - نعرض نتائج مشابهة
-                html += renderOpenAlexWorksList(allWorks, currentQuery, false);
+                html += renderOpenAlexWorksList(allWorks, currentQuery);
             }
             
             html += `</div>`;
@@ -1295,12 +1461,14 @@
             if (work) {
                 const container = document.getElementById('result');
                 let html = getBlacklistResultsHTML(currentQuery);
+                const similarity = work.title ? 
+                    Math.round((1 - levenshteinDistance(work.title.toLowerCase(), currentQuery.toLowerCase()) / Math.max(work.title.length, currentQuery.length)) * 100) : 0;
                 html += `
                     <div class="journal-card">
                         <div class="journal-title">
                             📄 نتيجة البحث العلمي: "${escapeHtml(currentQuery)}"
                             <span class="badge badge-openalex">OpenAlex</span>
-                            <span class="badge badge-similar" style="background:#ffc107;color:#2c3e50;">نتيجة مشابهة (${Math.round((1 - levenshteinDistance(work.title?.toLowerCase() || '', currentQuery.toLowerCase()) / Math.max(work.title?.length || 1, currentQuery.length)) * 100)}% تشابه)</span>
+                            <span class="badge badge-similar" style="background:#ffc107;color:#2c3e50;">نتيجة مشابهة (${similarity}% تشابه)</span>
                             <button onclick="searchJournal()" style="float: left; background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🔍 بحث جديد</button>
                         </div>
                         ${renderOpenAlexWorkSingle(work, false)}
