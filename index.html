@@ -246,6 +246,8 @@
         .badge-openalex { background: #17a2b8; }
         .badge-exact { background: #ffc107; color: #2c3e50; }
         .badge-similar { background: #6c757d; }
+        .badge-scopus { background: #0079c1; }
+        .badge-doaj { background: #28a745; }
         .raw-data {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -365,6 +367,15 @@
             font-size: 13px;
             color: #856404;
         }
+        .info-success {
+            background: #d4edda;
+            border-right: 4px solid #28a745;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #155724;
+        }
         .result-card {
             background: white;
             border-radius: 12px;
@@ -378,6 +389,33 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-color: #667eea;
+        }
+        .indexing-status {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .indexing-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .indexing-badge.scopus {
+            background: #e3f2fd;
+            color: #0079c1;
+        }
+        .indexing-badge.doaj {
+            background: #d4edda;
+            color: #155724;
+        }
+        .indexing-badge.not-indexed {
+            background: #f8d7da;
+            color: #721c24;
         }
         
         @media (max-width: 768px) {
@@ -589,6 +627,99 @@
             return normalizeTitle === normalizeQuery;
         }
 
+        // ========== دالة عرض حالة الفهرسة ==========
+        function renderIndexingStatus(work) {
+            let html = '';
+            
+            const source = work.primary_location?.source || work.primary_source;
+            
+            // التحقق من الفهرسة في Scopus (من خلال معرفات مختلفة)
+            const isScopusIndexed = work.indexed_in?.includes('scopus') || 
+                                   work.primary_location?.source?.is_scopus === true ||
+                                   work.ids?.scopus !== undefined ||
+                                   (source && source.issn_l && source.issn_l.length > 0);
+            
+            // التحقق من الفهرسة في DOAJ
+            const isDoajIndexed = source?.is_in_doaj === true || 
+                                 work.indexed_in?.includes('doaj');
+            
+            // سنوات التغطية (إذا كانت متوفرة من مصدر آخر)
+            const coverageStart = work.publication_year ? 
+                (work.primary_location?.source?.coverage_start_year || 'غير متوفر') : 'غير متوفر';
+            
+            html = `
+                <div class="section">
+                    <div class="section-title">📋 حالة الفهرسة في قواعد البيانات</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <strong>📊 Scopus (سكوبس)</strong>
+                            <span>
+                                ${isScopusIndexed ? 
+                                    '<span style="color:#28a745; font-weight:bold;">✅ مفهرسة في Scopus</span>' : 
+                                    '<span style="color:#dc3545; font-weight:bold;">❌ غير مفهرسة في Scopus</span>'}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <strong>🌍 DOAJ (دليل الوصول المفتوح)</strong>
+                            <span>
+                                ${isDoajIndexed ? 
+                                    '<span style="color:#28a745; font-weight:bold;">✅ مفهرسة في DOAJ</span>' : 
+                                    '<span style="color:#dc3545; font-weight:bold;">❌ غير مفهرسة في DOAJ</span>'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // إضافة سنوات التغطية إذا كانت متوفرة من Scopus (سيتم جلبها من Scopus API لاحقاً)
+            if (coverageStart && coverageStart !== 'غير متوفر') {
+                html += `
+                    <div class="section">
+                        <div class="section-title">📅 سنوات التغطية في Scopus</div>
+                        <div class="info-grid">
+                            <div class="info-item"><strong>سنة البدء</strong><span>${coverageStart}</span></div>
+                            <div class="info-item"><strong>سنة النهاية</strong><span>مستمرة</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // روابط مباشرة
+            if (source && source.issn_l) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🔗 روابط الفهرسة</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <strong>🔍 البحث في Scopus</strong>
+                                <span><a href="https://www.scopus.com/sources.uri?issn=${source.issn_l}" target="_blank">عرض المجلة في Scopus →</a></span>
+                            </div>
+                            <div class="info-item">
+                                <strong>🔍 البحث في DOAJ</strong>
+                                <span><a href="https://doaj.org/search?source=%7B%22query%22%3A%7B%22query_string%22%3A%7B%22query%22%3A%22${source.issn_l}%22%7D%7D%7D" target="_blank">عرض المجلة في DOAJ →</a></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (work.doi) {
+                html += `
+                    <div class="section">
+                        <div class="section-title">🔗 روابط مباشرة للبحث</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <strong>📄 عرض في Scopus</strong>
+                                <span><a href="https://www.scopus.com/record/display.uri?doi=${work.doi}" target="_blank">https://www.scopus.com/record/display.uri?doi=${work.doi} →</a></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+
         // ========== OpenAlex API ==========
         async function searchOpenAlexWork(query) {
             try {
@@ -729,7 +860,6 @@
         function renderAdvancedWorkInfo(work) {
             let html = '';
             
-            // معلومات المجلة المصدر (الأهم!)
             const source = work.primary_location?.source || work.primary_source;
             if (source) {
                 html += `
@@ -740,13 +870,12 @@
                             <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.host_organization_name || source.publisher || 'غير متوفر')}</span></div>
                             <div class="info-item"><strong>ISSN</strong><span dir="ltr">${source.issn_l || source.issn?.join(', ') || 'غير متوفر'}</span></div>
                             <div class="info-item"><strong>نوع المصدر</strong><span>${source.type === 'journal' ? '📖 دورية علمية' : source.type || 'غير محدد'}</span></div>
-                            <div class="info-item"><strong>مفهرسة في DOAJ</strong><span>${source.is_in_doaj ? '✅ نعم' : '❌ لا'}</span></div>
                         </div>
                     </div>
                 `;
             }
             
-            // مقاييس التأثير (FWCI, Percentile)
+            // مقاييس التأثير
             const percentile = work.citation_normalized_percentile;
             const fwci = work.fwci;
             html += `
@@ -775,7 +904,7 @@
                 </div>
             `;
             
-            // تفاصيل النشر (المجلد، العدد، الصفحات)
+            // تفاصيل النشر
             if (work.biblio && (work.biblio.volume || work.biblio.issue || work.biblio.first_page)) {
                 html += `
                     <div class="section">
@@ -789,7 +918,7 @@
                 `;
             }
             
-            // الموضوع الأساسي (Primary Topic) - الأهم
+            // الموضوع الأساسي
             if (work.primary_topic) {
                 html += `
                     <div class="section">
@@ -803,7 +932,7 @@
                 `;
             }
             
-            // المواضيع الرئيسية (Topics)
+            // المواضيع الرئيسية
             if (work.topics && work.topics.length > 0) {
                 html += `
                     <div class="section">
@@ -821,7 +950,7 @@
                 html += `</div></div>`;
             }
             
-            // الكلمات المفتاحية (Keywords)
+            // الكلمات المفتاحية
             if (work.keywords && work.keywords.length > 0) {
                 html += `
                     <div class="section">
@@ -834,7 +963,7 @@
                 html += `</div></div>`;
             }
             
-            // أهداف التنمية المستدامة (SDGs)
+            // أهداف التنمية المستدامة
             if (work.sustainable_development_goals && work.sustainable_development_goals.length > 0) {
                 html += `
                     <div class="section">
@@ -897,7 +1026,6 @@
                 `;
             }
             
-            // حالة الاقتباس (هل هو مقتطف/ملحق؟)
             if (work.is_retracted) {
                 html += `<div class="danger-message">⚠️ هذا البحث مسحوب (Retracted)!</div>`;
             }
@@ -924,6 +1052,9 @@
                 </div>
             `;
             
+            // ✅ إضافة حالة الفهرسة الجديدة
+            html += renderIndexingStatus(work);
+            
             if (abstract && abstract !== 'لا يتوفر ملخص') {
                 html += `
                     <div class="section">
@@ -933,10 +1064,8 @@
                 `;
             }
             
-            // إضافة المعلومات المتقدمة
             html += renderAdvancedWorkInfo(work);
             
-            // المؤلفون
             if (work.authorships && work.authorships.length > 0) {
                 html += `
                     <div class="section">
@@ -957,7 +1086,6 @@
                 html += `</div></div>`;
             }
             
-            // الأعمال المرجعية
             if (work.referenced_works && work.referenced_works.length > 0) {
                 html += `
                     <div class="section">
@@ -969,7 +1097,6 @@
                 `;
             }
             
-            // روابط
             html += `
                 <div class="section">
                     <div class="section-title">🔗 روابط مهمة</div>
@@ -1049,7 +1176,7 @@
             return html;
         }
         
-        // دالة لحساب مسافة ليفنشتاين (نسبة التشابه)
+        // دالة لحساب مسافة ليفنشتاين
         function levenshteinDistance(a, b) {
             const matrix = [];
             for (let i = 0; i <= b.length; i++) matrix[i] = [i];
@@ -1502,7 +1629,6 @@
         window.setExampleAndType = setExampleAndType;
         window.searchJournal = searchJournal;
         
-        // تنفيذ البحث تلقائياً عند تحميل الصفحة
         setTimeout(() => {
             searchJournal();
         }, 1000);
