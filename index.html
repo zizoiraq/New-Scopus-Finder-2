@@ -248,6 +248,8 @@
         .badge-similar { background: #6c757d; }
         .badge-scopus { background: #0079c1; }
         .badge-doaj { background: #28a745; }
+        .badge-beall { background: #ffc107; color: #856404; }
+        .badge-iraq { background: #dc3545; }
         .raw-data {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -376,6 +378,13 @@
             font-size: 13px;
             color: #155724;
         }
+        .scopus-info {
+            background: #e3f2fd;
+            border-right: 4px solid #0079c1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
         .result-card {
             background: white;
             border-radius: 12px;
@@ -389,33 +398,6 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-color: #667eea;
-        }
-        .indexing-status {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-        .indexing-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .indexing-badge.scopus {
-            background: #e3f2fd;
-            color: #0079c1;
-        }
-        .indexing-badge.doaj {
-            background: #d4edda;
-            color: #155724;
-        }
-        .indexing-badge.not-indexed {
-            background: #f8d7da;
-            color: #721c24;
         }
         
         @media (max-width: 768px) {
@@ -535,6 +517,69 @@
             }
             return html;
         }
+        
+        // دالة فحص المجلة في القوائم السوداء (للاستخدام عند عرض المجلة)
+        function checkJournalInBlacklists(journalName) {
+            if (!journalName) return { inBeall: false, inIraq: false };
+            const normalizedName = normalizeSimple(journalName);
+            return {
+                inBeall: beallLowerCaseSet.has(normalizedName),
+                inIraq: iraqLowerCaseSet.has(normalizedName)
+            };
+        }
+        
+        function renderBlacklistStatusForJournal(journalName) {
+            if (!journalName) return '';
+            
+            const blacklistStatus = checkJournalInBlacklists(journalName);
+            let html = '';
+            
+            if (blacklistStatus.inIraq) {
+                html += `
+                    <div class="danger-message" style="margin-bottom:15px;">
+                        <div style="display: flex; align-items: flex-start; gap: 15px;">
+                            <span style="font-size: 30px;">🚨</span>
+                            <div>
+                                <strong style="font-size: 16px;">تحذير خطير!</strong><br>
+                                المجلة "<strong>${escapeHtml(journalName)}</strong>" موجودة في <strong>القائمة السوداء لوزارة التعليم العالي العراقية</strong><br>
+                                <strong>❌ لا يعتد بها للأغراض الترقية والتقييم الأكاديمي.</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (blacklistStatus.inBeall) {
+                html += `
+                    <div class="danger-message" style="border-right-color:#ffc107; background:#fff3cd; margin-bottom:15px;">
+                        <div style="display: flex; align-items: flex-start; gap: 15px;">
+                            <span style="font-size: 30px;">⚠️</span>
+                            <div>
+                                <strong style="font-size: 16px; color:#856404;">تحذير! مجلة مفترسة</strong><br>
+                                المجلة "<strong>${escapeHtml(journalName)}</strong>" موجودة في <strong>قائمة بيل للمجلات المفترسة</strong><br>
+                                <strong>❌ لا ينصح بالنشر فيها.</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (!blacklistStatus.inBeall && !blacklistStatus.inIraq && journalName) {
+                html += `
+                    <div class="safe-message" style="margin-bottom:15px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span style="font-size: 24px;">✅</span>
+                            <div>
+                                <strong>المجلة آمنة</strong><br>
+                                المجلة "<strong>${escapeHtml(journalName)}</strong>" غير موجودة في القوائم السوداء.
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
 
         // ========== تحميل القوائم ==========
         async function loadBeallList() {
@@ -643,6 +688,50 @@
                 console.error('Scopus API error:', e);
                 return null;
             }
+        }
+        
+        function renderScopusStatus(scopusInfo, journalName = null) {
+            if (!scopusInfo) {
+                return `
+                    <div class="info-warning" style="margin-bottom:15px;">
+                        ⚠️ لا يمكن التحقق من حالة الفهرسة في Scopus (قد يكون المفتاح محدود الصلاحية)
+                    </div>
+                `;
+            }
+            
+            const issn = scopusInfo['prism:issn'] || 'غير متوفر';
+            const coverageStart = scopusInfo['coverageStartYear'] || scopusInfo['coverage-start-year']?.['$'] || 'غير متوفر';
+            const coverageEnd = scopusInfo['coverageEndYear'] || scopusInfo['coverage-end-year']?.['$'] || 'غير متوفر';
+            const publisher = scopusInfo['dc:publisher'] || 'غير متوفر';
+            const citeScore = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetric'] || 
+                             scopusInfo['citeScoreCurrentMetric'] || 'غير متوفر';
+            const citeScoreYear = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetricYear'] || '2024';
+            
+            let coverageYearsText = '';
+            if (coverageStart !== 'غير متوفر') {
+                const currentYear = new Date().getFullYear();
+                const startYear = parseInt(coverageStart);
+                if (!isNaN(startYear)) {
+                    const duration = currentYear - startYear;
+                    coverageYearsText = ` (${duration} سنة من التغطية المستمرة)`;
+                }
+            }
+            
+            return `
+                <div class="scopus-info">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                        <span style="font-size: 24px;">📊</span>
+                        <strong style="font-size: 16px;">Scopus (سكوبس)</strong>
+                        <span class="badge" style="background:#0079c1;">مفهرسة</span>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${coverageEnd === 'present' ? 'مستمرة' : coverageEnd}${coverageYearsText}</div>
+                        <div><strong>📈 CiteScore:</strong> ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'} (${citeScoreYear})</div>
+                        <div><strong>🏛️ الناشر:</strong> ${escapeHtml(publisher)}</div>
+                        <div><strong>🔗 <a href="https://www.scopus.com/sources.uri?issn=${issn}" target="_blank">عرض المجلة في Scopus →</a></strong></div>
+                    </div>
+                </div>
+            `;
         }
 
         // ========== OpenAlex API ==========
@@ -781,39 +870,17 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
-        // دالة عرض معلومات Scopus
-        function renderScopusStatus(scopusInfo) {
-            if (!scopusInfo) {
-                return `
-                    <div class="info-warning">
-                        ⚠️ لا يمكن التحقق من حالة الفهرسة في Scopus (قد يكون المفتاح محدود الصلاحية)
-                    </div>
-                `;
-            }
-            
-            const issn = scopusInfo['prism:issn'] || 'غير متوفر';
-            const coverageStart = scopusInfo['coverageStartYear'] || scopusInfo['coverage-start-year']?.['$'] || 'غير متوفر';
-            const coverageEnd = scopusInfo['coverageEndYear'] || scopusInfo['coverage-end-year']?.['$'] || 'غير متوفر';
-            const publisher = scopusInfo['dc:publisher'] || 'غير متوفر';
-            const citeScore = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetric'] || 'غير متوفر';
-            
-            return `
-                <div class="info-success" style="background:#e3f2fd; border-right-color:#0079c1;">
-                    <strong>📊 Scopus (سكوبس)</strong><br>
-                    ✅ المجلة <strong>مفهرسة في قاعدة بيانات Scopus</strong><br>
-                    📅 سنوات التغطية: ${coverageStart} - ${coverageEnd === 'present' ? 'مستمرة' : coverageEnd}<br>
-                    📈 CiteScore: ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'}<br>
-                    🏛️ الناشر: ${escapeHtml(publisher)}<br>
-                    🔗 <a href="https://www.scopus.com/sources.uri?issn=${issn}" target="_blank">عرض المجلة في Scopus →</a>
-                </div>
-            `;
-        }
-
-        // دالة عرض المعلومات المتقدمة من OpenAlex مع دمج Scopus
+        // دالة عرض المعلومات المتقدمة من OpenAlex مع دمج Scopus والقوائم السوداء
         async function renderAdvancedWorkInfoWithScopus(work) {
             let html = '';
             
             const source = work.primary_location?.source || work.primary_source;
+            const journalName = source?.display_name || null;
+            
+            // عرض حالة القوائم السوداء للمجلة
+            if (journalName) {
+                html += renderBlacklistStatusForJournal(journalName);
+            }
             
             // جلب معلومات Scopus من ISSN
             let scopusInfo = null;
@@ -821,12 +888,12 @@
                 scopusInfo = await getScopusJournalInfo(source.issn_l);
             }
             
-            // عرض حالة Scopus
+            // عرض حالة Scopus مع CiteScore وسنوات التغطية
             if (scopusInfo) {
-                html += renderScopusStatus(scopusInfo);
+                html += renderScopusStatus(scopusInfo, journalName);
             } else {
                 html += `
-                    <div class="info-warning">
+                    <div class="info-warning" style="margin-bottom:15px;">
                         ⚠️ لم يتم العثور على المجلة في قاعدة بيانات Scopus (غير مفهرسة أو المفتاح غير متاح)
                     </div>
                 `;
@@ -1034,7 +1101,7 @@
                 `;
             }
             
-            // عرض المعلومات المتقدمة مع Scopus
+            // عرض المعلومات المتقدمة مع Scopus والقوائم السوداء
             const advancedInfo = await renderAdvancedWorkInfoWithScopus(work);
             html += advancedInfo;
             
@@ -1488,10 +1555,8 @@
             `;
             
             if (hasExactMatch && exactMatchWork) {
-                // عرض مؤقت للحمل
-                html += `<div id="exact-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus...</p></div></div>`;
+                html += `<div id="exact-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus والتحقق من القوائم السوداء...</p></div></div>`;
                 container.innerHTML = html;
-                // تحميل البيانات بشكل غير متزامن
                 await renderOpenAlexWorkSingleAsync(exactMatchWork, true, 'exact-work-container');
             } else {
                 html += renderOpenAlexWorksList(allWorks, currentQuery);
@@ -1583,7 +1648,7 @@
                             <span class="badge badge-similar" style="background:#ffc107;color:#2c3e50;">نتيجة مشابهة (${similarity}% تشابه)</span>
                             <button onclick="searchJournal()" style="float: left; background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🔍 بحث جديد</button>
                         </div>
-                        <div id="selected-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus...</p></div></div>
+                        <div id="selected-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus والتحقق من القوائم السوداء...</p></div></div>
                     </div>
                 `;
                 container.innerHTML = html;
