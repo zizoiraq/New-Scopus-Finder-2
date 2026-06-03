@@ -457,7 +457,7 @@
                 </div>
                 
                 <div class="input-group">
-                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="Sensor technology advances and future trends">
+                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="An investigation on real-time insights: enhancing process control with IoT-enabled sensor networks">
                     <button onclick="searchJournal()">🔍 فحص</button>
                 </div>
                 
@@ -467,13 +467,11 @@
                 
                 <div class="example">
                     📝 أمثلة: 
-                    <span onclick="setExampleAndType('10.1016/j.joi.2017.08.007', 'work')">🔬 بحث (DOI)</span> •
+                    <span onclick="setExampleAndType('10.1007/s43926-025-00124-6', 'work')">🔬 بحث (DOI)</span> •
                     <span onclick="setExampleAndType('New England Journal of Medicine', 'journal')">📚 مجلة (NEJM)</span> •
                     <span onclick="setExampleAndType('2772-6682', 'journal')">📰 ISSN</span> •
                     <span onclick="setExampleAndType('bibliometrix', 'work')">📝 بحث (كلمة)</span> •
-                    <span onclick="setExampleAndType('Sensor technology advances and future trends', 'work')">📡 بحث دقيق</span> •
-                    <span onclick="setExampleAndType('Science', 'work')">⚠️ كلمة مشتركة (كبحث)</span> •
-                    <span onclick="setExampleAndType('Science', 'journal')">⚠️ كلمة مشتركة (كمجلة)</span>
+                    <span onclick="setExampleAndType('Sensor technology advances and future trends', 'work')">📡 بحث دقيق</span>
                 </div>
                 <div id="listsStatus" class="list-status">🔄 جاري تحميل القوائم...</div>
             </div>
@@ -627,97 +625,24 @@
             return normalizeTitle === normalizeQuery;
         }
 
-        // ========== دالة عرض حالة الفهرسة ==========
-        function renderIndexingStatus(work) {
-            let html = '';
-            
-            const source = work.primary_location?.source || work.primary_source;
-            
-            // التحقق من الفهرسة في Scopus (من خلال معرفات مختلفة)
-            const isScopusIndexed = work.indexed_in?.includes('scopus') || 
-                                   work.primary_location?.source?.is_scopus === true ||
-                                   work.ids?.scopus !== undefined ||
-                                   (source && source.issn_l && source.issn_l.length > 0);
-            
-            // التحقق من الفهرسة في DOAJ
-            const isDoajIndexed = source?.is_in_doaj === true || 
-                                 work.indexed_in?.includes('doaj');
-            
-            // سنوات التغطية (إذا كانت متوفرة من مصدر آخر)
-            const coverageStart = work.publication_year ? 
-                (work.primary_location?.source?.coverage_start_year || 'غير متوفر') : 'غير متوفر';
-            
-            html = `
-                <div class="section">
-                    <div class="section-title">📋 حالة الفهرسة في قواعد البيانات</div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <strong>📊 Scopus (سكوبس)</strong>
-                            <span>
-                                ${isScopusIndexed ? 
-                                    '<span style="color:#28a745; font-weight:bold;">✅ مفهرسة في Scopus</span>' : 
-                                    '<span style="color:#dc3545; font-weight:bold;">❌ غير مفهرسة في Scopus</span>'}
-                            </span>
-                        </div>
-                        <div class="info-item">
-                            <strong>🌍 DOAJ (دليل الوصول المفتوح)</strong>
-                            <span>
-                                ${isDoajIndexed ? 
-                                    '<span style="color:#28a745; font-weight:bold;">✅ مفهرسة في DOAJ</span>' : 
-                                    '<span style="color:#dc3545; font-weight:bold;">❌ غير مفهرسة في DOAJ</span>'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // إضافة سنوات التغطية إذا كانت متوفرة من Scopus (سيتم جلبها من Scopus API لاحقاً)
-            if (coverageStart && coverageStart !== 'غير متوفر') {
-                html += `
-                    <div class="section">
-                        <div class="section-title">📅 سنوات التغطية في Scopus</div>
-                        <div class="info-grid">
-                            <div class="info-item"><strong>سنة البدء</strong><span>${coverageStart}</span></div>
-                            <div class="info-item"><strong>سنة النهاية</strong><span>مستمرة</span></div>
-                        </div>
-                    </div>
-                `;
+        // ========== دالة جلب معلومات Scopus من ISSN ==========
+        async function getScopusJournalInfo(issn) {
+            if (!issn) return null;
+            try {
+                const url = `https://api.elsevier.com/content/serial/title/issn/${issn}?apiKey=${SCOPUS_API_KEY}`;
+                const response = await fetch(url);
+                if (!response.ok) return null;
+                const data = await response.json();
+                const entries = data['serial-metadata-response']?.['entry'];
+                if (entries) {
+                    const journals = Array.isArray(entries) ? entries : [entries];
+                    return journals[0] || null;
+                }
+                return null;
+            } catch(e) {
+                console.error('Scopus API error:', e);
+                return null;
             }
-            
-            // روابط مباشرة
-            if (source && source.issn_l) {
-                html += `
-                    <div class="section">
-                        <div class="section-title">🔗 روابط الفهرسة</div>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <strong>🔍 البحث في Scopus</strong>
-                                <span><a href="https://www.scopus.com/sources.uri?issn=${source.issn_l}" target="_blank">عرض المجلة في Scopus →</a></span>
-                            </div>
-                            <div class="info-item">
-                                <strong>🔍 البحث في DOAJ</strong>
-                                <span><a href="https://doaj.org/search?source=%7B%22query%22%3A%7B%22query_string%22%3A%7B%22query%22%3A%22${source.issn_l}%22%7D%7D%7D" target="_blank">عرض المجلة في DOAJ →</a></span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            if (work.doi) {
-                html += `
-                    <div class="section">
-                        <div class="section-title">🔗 روابط مباشرة للبحث</div>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <strong>📄 عرض في Scopus</strong>
-                                <span><a href="https://www.scopus.com/record/display.uri?doi=${work.doi}" target="_blank">https://www.scopus.com/record/display.uri?doi=${work.doi} →</a></span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            return html;
         }
 
         // ========== OpenAlex API ==========
@@ -856,20 +781,68 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
-        // دالة عرض المعلومات المتقدمة من OpenAlex
-        function renderAdvancedWorkInfo(work) {
+        // دالة عرض معلومات Scopus
+        function renderScopusStatus(scopusInfo) {
+            if (!scopusInfo) {
+                return `
+                    <div class="info-warning">
+                        ⚠️ لا يمكن التحقق من حالة الفهرسة في Scopus (قد يكون المفتاح محدود الصلاحية)
+                    </div>
+                `;
+            }
+            
+            const issn = scopusInfo['prism:issn'] || 'غير متوفر';
+            const coverageStart = scopusInfo['coverageStartYear'] || scopusInfo['coverage-start-year']?.['$'] || 'غير متوفر';
+            const coverageEnd = scopusInfo['coverageEndYear'] || scopusInfo['coverage-end-year']?.['$'] || 'غير متوفر';
+            const publisher = scopusInfo['dc:publisher'] || 'غير متوفر';
+            const citeScore = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetric'] || 'غير متوفر';
+            
+            return `
+                <div class="info-success" style="background:#e3f2fd; border-right-color:#0079c1;">
+                    <strong>📊 Scopus (سكوبس)</strong><br>
+                    ✅ المجلة <strong>مفهرسة في قاعدة بيانات Scopus</strong><br>
+                    📅 سنوات التغطية: ${coverageStart} - ${coverageEnd === 'present' ? 'مستمرة' : coverageEnd}<br>
+                    📈 CiteScore: ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'}<br>
+                    🏛️ الناشر: ${escapeHtml(publisher)}<br>
+                    🔗 <a href="https://www.scopus.com/sources.uri?issn=${issn}" target="_blank">عرض المجلة في Scopus →</a>
+                </div>
+            `;
+        }
+
+        // دالة عرض المعلومات المتقدمة من OpenAlex مع دمج Scopus
+        async function renderAdvancedWorkInfoWithScopus(work) {
             let html = '';
             
             const source = work.primary_location?.source || work.primary_source;
+            
+            // جلب معلومات Scopus من ISSN
+            let scopusInfo = null;
+            if (source && source.issn_l) {
+                scopusInfo = await getScopusJournalInfo(source.issn_l);
+            }
+            
+            // عرض حالة Scopus
+            if (scopusInfo) {
+                html += renderScopusStatus(scopusInfo);
+            } else {
+                html += `
+                    <div class="info-warning">
+                        ⚠️ لم يتم العثور على المجلة في قاعدة بيانات Scopus (غير مفهرسة أو المفتاح غير متاح)
+                    </div>
+                `;
+            }
+            
+            // المجلة المصدر من OpenAlex
             if (source) {
                 html += `
                     <div class="section">
-                        <div class="section-title">📚 المجلة المصدر</div>
+                        <div class="section-title">📚 المجلة المصدر (OpenAlex)</div>
                         <div class="info-grid">
                             <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(source.display_name || 'غير متوفر')}</span></div>
                             <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.host_organization_name || source.publisher || 'غير متوفر')}</span></div>
                             <div class="info-item"><strong>ISSN</strong><span dir="ltr">${source.issn_l || source.issn?.join(', ') || 'غير متوفر'}</span></div>
                             <div class="info-item"><strong>نوع المصدر</strong><span>${source.type === 'journal' ? '📖 دورية علمية' : source.type || 'غير محدد'}</span></div>
+                            <div class="info-item"><strong>مفهرسة في DOAJ</strong><span>${source.is_in_doaj ? '✅ نعم' : '❌ لا'}</span></div>
                         </div>
                     </div>
                 `;
@@ -1033,7 +1006,7 @@
             return html;
         }
 
-        function renderOpenAlexWorkSingle(work, isExact = true) {
+        async function renderOpenAlexWorkSingleAsync(work, isExact = true, containerId = null) {
             if (!work) return '<div class="not-found-box"><p>❌ لم يتم العثور على البحث</p></div>';
             
             const abstract = work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : 'لا يتوفر ملخص';
@@ -1052,9 +1025,6 @@
                 </div>
             `;
             
-            // ✅ إضافة حالة الفهرسة الجديدة
-            html += renderIndexingStatus(work);
-            
             if (abstract && abstract !== 'لا يتوفر ملخص') {
                 html += `
                     <div class="section">
@@ -1064,7 +1034,9 @@
                 `;
             }
             
-            html += renderAdvancedWorkInfo(work);
+            // عرض المعلومات المتقدمة مع Scopus
+            const advancedInfo = await renderAdvancedWorkInfoWithScopus(work);
+            html += advancedInfo;
             
             if (work.authorships && work.authorships.length > 0) {
                 html += `
@@ -1097,17 +1069,28 @@
                 `;
             }
             
+            // إصلاح رابط DOI المكرر
+            let cleanDoi = work.doi;
+            if (cleanDoi && cleanDoi.startsWith('https://doi.org/')) {
+                cleanDoi = cleanDoi.replace('https://doi.org/', '');
+            }
+            
             html += `
                 <div class="section">
                     <div class="section-title">🔗 روابط مهمة</div>
                     <div class="info-grid">
-                        ${work.doi ? `<div class="info-item"><strong>DOI URL</strong><span><a href="https://doi.org/${work.doi}" target="_blank">https://doi.org/${work.doi} →</a></span></div>` : ''}
+                        ${work.doi ? `<div class="info-item"><strong>DOI URL</strong><span><a href="https://doi.org/${cleanDoi}" target="_blank">https://doi.org/${cleanDoi} →</a></span></div>` : ''}
                         ${work.id ? `<div class="info-item"><strong>OpenAlex</strong><span><a href="${work.id}" target="_blank">عرض في OpenAlex →</a></span></div>` : ''}
                     </div>
                 </div>
             `;
             
             html += `<details><summary style="cursor:pointer;color:#667eea;margin-top:15px;padding:10px;background:#f0f0f0;border-radius:8px;">📄 البيانات الخام من OpenAlex</summary><div class="raw-data">${JSON.stringify(work, null, 2)}</div></details>`;
+            
+            if (containerId) {
+                const container = document.getElementById(containerId);
+                if (container) container.innerHTML = html;
+            }
             
             return html;
         }
@@ -1146,7 +1129,7 @@
                 const sourceName = work.primary_location?.source?.display_name || work.primary_source?.display_name || 'مجلة غير معروفة';
                 
                 html += `
-                    <div class="result-card" onclick="selectWork(${i})">
+                    <div class="result-card" onclick="selectWorkAsync(${i})">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
                             <h3 style="color: #667eea; margin-bottom: 10px; font-size: 18px;">📄 ${escapeHtml(work.title || 'بدون عنوان')}</h3>
                             <div>
@@ -1176,7 +1159,6 @@
             return html;
         }
         
-        // دالة لحساب مسافة ليفنشتاين
         function levenshteinDistance(a, b) {
             const matrix = [];
             for (let i = 0; i <= b.length; i++) matrix[i] = [i];
@@ -1435,7 +1417,7 @@
             if (searchType === 'work') {
                 const openAlexResult = await searchOpenAlexWork(query);
                 currentOpenAlexData = openAlexResult;
-                displayWorkResults();
+                await displayWorkResultsAsync();
             } 
             else if (searchType === 'journal') {
                 const [scopusResult, doajResult, openAlexResult] = await Promise.all([
@@ -1455,7 +1437,7 @@
                 if (isDOI) {
                     const openAlexResult = await searchOpenAlexWork(query);
                     currentOpenAlexData = openAlexResult;
-                    displayWorkResults();
+                    await displayWorkResultsAsync();
                 } 
                 else if (isISSN) {
                     const [scopusResult, doajResult, openAlexResult] = await Promise.all([
@@ -1472,7 +1454,7 @@
                     const openAlexWork = await searchOpenAlexWork(query);
                     if (openAlexWork.data && openAlexWork.data.length > 0) {
                         currentOpenAlexData = openAlexWork;
-                        displayWorkResults();
+                        await displayWorkResultsAsync();
                     } else {
                         const [scopusResult, doajResult, openAlexSource] = await Promise.all([
                             searchScopus(query),
@@ -1488,7 +1470,7 @@
             }
         }
 
-        function displayWorkResults() {
+        async function displayWorkResultsAsync() {
             const container = document.getElementById('result');
             let html = getBlacklistResultsHTML(currentQuery);
             
@@ -1506,13 +1488,16 @@
             `;
             
             if (hasExactMatch && exactMatchWork) {
-                html += renderOpenAlexWorkSingle(exactMatchWork, true);
+                // عرض مؤقت للحمل
+                html += `<div id="exact-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus...</p></div></div>`;
+                container.innerHTML = html;
+                // تحميل البيانات بشكل غير متزامن
+                await renderOpenAlexWorkSingleAsync(exactMatchWork, true, 'exact-work-container');
             } else {
                 html += renderOpenAlexWorksList(allWorks, currentQuery);
+                html += `</div>`;
+                container.innerHTML = html;
             }
-            
-            html += `</div>`;
-            container.innerHTML = html;
         }
 
         function displayJournalResults() {
@@ -1583,7 +1568,7 @@
             });
         }
 
-        window.selectWork = function(index) {
+        window.selectWorkAsync = async function(index) {
             const work = window.currentWorksList[index];
             if (work) {
                 const container = document.getElementById('result');
@@ -1598,10 +1583,11 @@
                             <span class="badge badge-similar" style="background:#ffc107;color:#2c3e50;">نتيجة مشابهة (${similarity}% تشابه)</span>
                             <button onclick="searchJournal()" style="float: left; background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🔍 بحث جديد</button>
                         </div>
-                        ${renderOpenAlexWorkSingle(work, false)}
+                        <div id="selected-work-container"><div class="loading"><div class="spinner"></div><p>جاري جلب معلومات Scopus...</p></div></div>
                     </div>
                 `;
                 container.innerHTML = html;
+                await renderOpenAlexWorkSingleAsync(work, false, 'selected-work-container');
             }
         };
 
