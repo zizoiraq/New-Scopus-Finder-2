@@ -243,6 +243,8 @@
             margin-right: 10px;
         }
         .badge-openalex { background: #17a2b8; }
+        .badge-exact { background: #ffc107; color: #2c3e50; }
+        .badge-similar { background: #6c757d; }
         .raw-data {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -353,6 +355,15 @@
             margin-bottom: 15px;
             font-size: 13px;
         }
+        .info-warning {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
         .result-card {
             background: white;
             border-radius: 12px;
@@ -421,7 +432,7 @@
                     <span onclick="setExampleAndType('New England Journal of Medicine', 'journal')">📚 مجلة (NEJM)</span> •
                     <span onclick="setExampleAndType('2772-6682', 'journal')">📰 ISSN</span> •
                     <span onclick="setExampleAndType('bibliometrix', 'work')">📝 بحث (كلمة)</span> •
-                    <span onclick="setExampleAndType('machine learning', 'work')">🤖 بحث عام</span> •
+                    <span onclick="setExampleAndType('Sensor technology advances and future trends', 'work')">📡 بحث دقيق</span> •
                     <span onclick="setExampleAndType('Science', 'work')">⚠️ كلمة مشتركة (كبحث)</span> •
                     <span onclick="setExampleAndType('Science', 'journal')">⚠️ كلمة مشتركة (كمجلة)</span>
                 </div>
@@ -569,6 +580,15 @@
             });
         });
 
+        // ========== دالة مقارنة العناوين للتطابق التام ==========
+        function isExactMatch(title, query) {
+            if (!title || !query) return false;
+            // تطبيع النصوص: إزالة المسافات الزائدة، تحويل إلى أحرف صغيرة، مقارنة
+            const normalizeTitle = title.toLowerCase().trim().replace(/\s+/g, ' ');
+            const normalizeQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
+            return normalizeTitle === normalizeQuery;
+        }
+
         // ========== OpenAlex API ==========
         async function searchOpenAlexWork(query) {
             try {
@@ -582,7 +602,7 @@
                 } 
                 else {
                     const encodedQuery = encodeURIComponent(query);
-                    url = `https://api.openalex.org/works?search=${encodedQuery}&per-page=15&sort=relevance_score:desc`;
+                    url = `https://api.openalex.org/works?search=${encodedQuery}&per-page=20&sort=relevance_score:desc`;
                 }
                 
                 const controller = new AbortController();
@@ -594,11 +614,21 @@
                 const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
+                    // البحث عن تطابق تام
+                    let exactMatch = null;
+                    for (let work of data.results) {
+                        if (work.title && isExactMatch(work.title, query)) {
+                            exactMatch = work;
+                            break;
+                        }
+                    }
+                    
                     return { 
                         success: true, 
                         data: data.results,
+                        exactMatch: exactMatch,
+                        hasExactMatch: exactMatch !== null,
                         type: 'work',
-                        isMultiple: data.results.length > 1,
                         total: data.meta?.count || data.results.length
                     };
                 }
@@ -607,8 +637,9 @@
                     return { 
                         success: true, 
                         data: [data],
+                        exactMatch: data,
+                        hasExactMatch: true,
                         type: 'work',
-                        isMultiple: false,
                         total: 1
                     };
                 }
@@ -616,8 +647,9 @@
                 return { 
                     success: true, 
                     data: [], 
+                    exactMatch: null,
+                    hasExactMatch: false,
                     type: 'work',
-                    isMultiple: false,
                     total: 0
                 };
             } catch (error) {
@@ -644,9 +676,16 @@
                 const data = await response.json();
                 
                 if (data.results && data.results.length > 0) {
-                    return { success: true, data: data.results[0], type: 'source' };
+                    let exactMatch = null;
+                    for (let source of data.results) {
+                        if (source.display_name && isExactMatch(source.display_name, query)) {
+                            exactMatch = source;
+                            break;
+                        }
+                    }
+                    return { success: true, data: data.results[0], exactMatch: exactMatch, hasExactMatch: exactMatch !== null, type: 'source' };
                 }
-                return { success: true, data: null, type: 'source' };
+                return { success: true, data: null, exactMatch: null, hasExactMatch: false, type: 'source' };
             } catch (error) {
                 return { success: false, error: error.message, data: null };
             }
@@ -687,7 +726,7 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
-        function renderOpenAlexWorkSingle(work) {
+        function renderOpenAlexWorkSingle(work, isExact = true) {
             if (!work) return '<div class="not-found-box"><p>❌ لم يتم العثور على البحث</p></div>';
             
             const abstract = work.abstract_inverted_index ? reconstructAbstract(work.abstract_inverted_index) : 'لا يتوفر ملخص';
@@ -695,7 +734,7 @@
             
             let html = `
                 <div class="section">
-                    <div class="section-title">📄 معلومات البحث الأساسية</div>
+                    <div class="section-title">📄 معلومات البحث الأساسية ${isExact ? '<span class="badge-exact" style="background:#ffc107;color:#2c3e50;padding:2px 8px;border-radius:15px;font-size:12px;margin-right:10px;">✓ تطابق تام</span>' : ''}</div>
                     <div class="info-grid">
                         <div class="info-item"><strong>العنوان</strong><span>${escapeHtml(work.title || 'غير متوفر')}</span></div>
                         <div class="info-item"><strong>DOI</strong><span dir="ltr">${work.doi || 'غير متوفر'}</span></div>
@@ -778,27 +817,25 @@
             return html;
         }
 
-        function renderOpenAlexWorksList(works, query) {
+        function renderOpenAlexWorksList(works, query, hasExactMatch) {
             if (!works || works.length === 0) {
                 return `
                     <div class="not-found-box">
-                        <p>❌ لم يتم العثور على بحث علمي بعنوان "${escapeHtml(query)}"</p>
-                        <p>💡 نصيحة: حاول البحث عن "مجلة" بدلاً من "بحث علمي"</p>
+                        <p>❌ لم يتم العثور على أي بحث علمي بعنوان "${escapeHtml(query)}"</p>
+                        <p>💡 نصيحة: جرب البحث عن "مجلة" بدلاً من "بحث علمي"</p>
                         <p>💡 أو استخدم كلمات مفتاحية أقصر وأكثر تحديداً</p>
-                        <p>💡 مثال: <span onclick="setExampleAndType('machine learning', 'work')" style="color:#667eea;cursor:pointer;">machine learning</span></p>
                     </div>
                 `;
             }
             
-            if (works.length === 1) {
-                return renderOpenAlexWorkSingle(works[0]);
-            }
-            
             let html = `
+                <div class="info-warning">
+                    ⚠️ لم يتم العثور على تطابق تام للعنوان: "<strong>${escapeHtml(query)}</strong>"
+                </div>
                 <div class="section">
-                    <div class="section-title">🔍 تم العثور على ${works.length} نتيجة بحث</div>
+                    <div class="section-title">🔍 نتائج مشابهة (${works.length} نتيجة)</div>
                     <div class="info-note" style="margin-bottom: 15px;">
-                        💡 اختر البحث المناسب من القائمة أدناه لعرض التفاصيل الكاملة:
+                        💡 هذه نتائج مشابهة لما بحثت عنه. انقر على أي نتيجة لعرض التفاصيل الكاملة:
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 15px;">
             `;
@@ -809,11 +846,18 @@
                     reconstructAbstract(work.abstract_inverted_index).substring(0, 200) + '...' : 
                     'لا يتوفر ملخص';
                 
+                // حساب نسبة التشابه التقريبية
+                const similarity = work.title ? 
+                    Math.round((1 - levenshteinDistance(work.title.toLowerCase(), query.toLowerCase()) / Math.max(work.title.length, query.length)) * 100) : 0;
+                
                 html += `
                     <div class="result-card" onclick="selectWork(${i})">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap;">
                             <h3 style="color: #667eea; margin-bottom: 10px; font-size: 18px;">📄 ${escapeHtml(work.title || 'بدون عنوان')}</h3>
-                            <span class="badge" style="background: #17a2b8;">📊 ${work.cited_by_count || 0} اقتباس</span>
+                            <div>
+                                <span class="badge" style="background: #6c757d;">${similarity}% تشابه</span>
+                                <span class="badge" style="background: #17a2b8;">📊 ${work.cited_by_count || 0} اقتباس</span>
+                            </div>
                         </div>
                         <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
                             📅 ${work.publication_year || 'سنة غير معروفة'} | 
@@ -836,13 +880,31 @@
             
             return html;
         }
+        
+        // دالة لحساب مسافة ليفنشتاين (نسبة التشابه بين النصوص)
+        function levenshteinDistance(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    const cost = a[j-1] === b[i-1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i-1][j] + 1,
+                        matrix[i][j-1] + 1,
+                        matrix[i-1][j-1] + cost
+                    );
+                }
+            }
+            return matrix[b.length][a.length];
+        }
 
-        function renderOpenAlexSource(source) {
+        function renderOpenAlexSource(source, isExact = true) {
             if (!source) return '<div class="not-found-box"><p>❌ لم يتم العثور على المجلة في OpenAlex</p></div>';
             
             let html = `
                 <div class="section">
-                    <div class="section-title">📚 معلومات المجلة (OpenAlex)</div>
+                    <div class="section-title">📚 معلومات المجلة (OpenAlex) ${isExact ? '<span class="badge-exact" style="background:#ffc107;color:#2c3e50;padding:2px 8px;border-radius:15px;font-size:12px;margin-right:10px;">✓ تطابق تام</span>' : ''}</div>
                     <div class="info-grid">
                         <div class="info-item"><strong>اسم المجلة</strong><span>${escapeHtml(source.display_name || 'غير متوفر')}</span></div>
                         <div class="info-item"><strong>الناشر</strong><span>${escapeHtml(source.publisher || 'غير متوفر')}</span></div>
@@ -1135,25 +1197,28 @@
             const container = document.getElementById('result');
             let html = getBlacklistResultsHTML(currentQuery);
             
-            const hasOpenAlex = currentOpenAlexData?.success && currentOpenAlexData.data && currentOpenAlexData.data.length > 0;
+            const hasExactMatch = currentOpenAlexData?.hasExactMatch;
+            const exactMatchWork = currentOpenAlexData?.exactMatch;
+            const allWorks = currentOpenAlexData?.data || [];
             
             html += `
                 <div class="journal-card">
                     <div class="journal-title">
                         📄 نتيجة البحث العلمي: "${escapeHtml(currentQuery)}"
-                        ${hasOpenAlex ? `<span class="badge badge-openalex">OpenAlex</span>` : ''}
+                        ${hasExactMatch ? '<span class="badge badge-exact" style="background:#28a745;">✓ تطابق تام</span>' : '<span class="badge badge-similar" style="background:#6c757d;">نتائج مشابهة</span>'}
+                        <span class="badge badge-openalex">OpenAlex</span>
                     </div>
-                    
-                    <div class="tabs">
-                        <button class="tab-btn active" onclick="switchTab('openalex')">🌐 OpenAlex</button>
-                    </div>
-                    
-                    <div id="tab-openalex" class="tab-content active">
-                        ${hasOpenAlex ? renderOpenAlexWorksList(currentOpenAlexData.data, currentQuery) : '<div class="not-found-box"><p>❌ لم يتم العثور على بحث علمي بهذا الاسم</p><p>💡 نصيحة: جرب البحث عن "مجلة" بدلاً من "بحث علمي"</p></div>'}
-                    </div>
-                </div>
             `;
             
+            if (hasExactMatch && exactMatchWork) {
+                // يوجد تطابق تام - نعرضه مباشرة
+                html += renderOpenAlexWorkSingle(exactMatchWork, true);
+            } else {
+                // لا يوجد تطابق تام - نعرض نتائج مشابهة
+                html += renderOpenAlexWorksList(allWorks, currentQuery, false);
+            }
+            
+            html += `</div>`;
             container.innerHTML = html;
         }
 
@@ -1171,6 +1236,7 @@
             
             const hasDOAJData = currentDOAJData?.success && currentDOAJData.data?.total > 0;
             const hasOpenAlex = currentOpenAlexData?.success && currentOpenAlexData.data;
+            const isExactOpenAlex = currentOpenAlexData?.hasExactMatch || false;
             
             let journalTitle = currentQuery;
             if (scopusEntry) journalTitle = scopusEntry['dc:title'] || journalTitle;
@@ -1181,7 +1247,7 @@
                         📚 ${escapeHtml(journalTitle)}
                         ${scopusEntry ? `<span class="badge">Scopus</span>` : ''}
                         ${hasDOAJData ? `<span class="badge">DOAJ</span>` : ''}
-                        ${hasOpenAlex ? `<span class="badge badge-openalex">OpenAlex</span>` : ''}
+                        ${hasOpenAlex ? `<span class="badge badge-openalex">OpenAlex${isExactOpenAlex ? ' ✓' : ''}</span>` : ''}
                     </div>
                     
                     <div class="tabs">
@@ -1191,7 +1257,7 @@
                     </div>
                     
                     <div id="tab-openalex" class="tab-content ${hasOpenAlex ? 'active' : ''}">
-                        ${hasOpenAlex ? renderOpenAlexSource(currentOpenAlexData.data) : '<div class="not-found-box"><p>❌ لم يتم العثور على المجلة في OpenAlex</p></div>'}
+                        ${hasOpenAlex ? renderOpenAlexSource(currentOpenAlexData.data, isExactOpenAlex) : '<div class="not-found-box"><p>❌ لم يتم العثور على المجلة في OpenAlex</p></div>'}
                     </div>
                     
                     <div id="tab-scopus" class="tab-content ${!hasOpenAlex && scopusEntry ? 'active' : ''}">
@@ -1232,11 +1298,12 @@
                 html += `
                     <div class="journal-card">
                         <div class="journal-title">
-                            📄 نتيجة البحث العلمي
+                            📄 نتيجة البحث العلمي: "${escapeHtml(currentQuery)}"
                             <span class="badge badge-openalex">OpenAlex</span>
+                            <span class="badge badge-similar" style="background:#ffc107;color:#2c3e50;">نتيجة مشابهة (${Math.round((1 - levenshteinDistance(work.title?.toLowerCase() || '', currentQuery.toLowerCase()) / Math.max(work.title?.length || 1, currentQuery.length)) * 100)}% تشابه)</span>
                             <button onclick="searchJournal()" style="float: left; background: #667eea; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🔍 بحث جديد</button>
                         </div>
-                        ${renderOpenAlexWorkSingle(work)}
+                        ${renderOpenAlexWorkSingle(work, false)}
                     </div>
                 `;
                 container.innerHTML = html;
@@ -1267,7 +1334,7 @@
         window.setExampleAndType = setExampleAndType;
         window.searchJournal = searchJournal;
         
-        // تنفيذ البحث تلقائياً عند تحميل الصفحة (للعرض)
+        // تنفيذ البحث تلقائياً عند تحميل الصفحة
         setTimeout(() => {
             searchJournal();
         }, 1000);
