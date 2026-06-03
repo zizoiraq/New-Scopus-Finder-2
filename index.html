@@ -248,8 +248,6 @@
         .badge-similar { background: #6c757d; }
         .badge-scopus { background: #0079c1; }
         .badge-doaj { background: #28a745; }
-        .badge-beall { background: #ffc107; color: #856404; }
-        .badge-iraq { background: #dc3545; }
         .raw-data {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -399,6 +397,23 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-color: #667eea;
         }
+        .blacklist-card {
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        .blacklist-card.safe {
+            background: #d4edda;
+            border-right: 4px solid #28a745;
+        }
+        .blacklist-card.beall {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+        }
+        .blacklist-card.iraq {
+            background: #f8d7da;
+            border-right: 4px solid #dc3545;
+        }
         
         @media (max-width: 768px) {
             .tabs { gap: 5px; }
@@ -518,7 +533,7 @@
             return html;
         }
         
-        // دالة فحص المجلة في القوائم السوداء (للاستخدام عند عرض المجلة)
+        // دالة فحص المجلة في القوائم السوداء
         function checkJournalInBlacklists(journalName) {
             if (!journalName) return { inBeall: false, inIraq: false };
             const normalizedName = normalizeSimple(journalName);
@@ -528,55 +543,81 @@
             };
         }
         
-        function renderBlacklistStatusForJournal(journalName) {
+        // دالة عرض بطاقات القوائم السوداء بشكل واضح
+        function renderBlacklistStatusCards(journalName) {
             if (!journalName) return '';
             
             const blacklistStatus = checkJournalInBlacklists(journalName);
-            let html = '';
             
-            if (blacklistStatus.inIraq) {
-                html += `
-                    <div class="danger-message" style="margin-bottom:15px;">
-                        <div style="display: flex; align-items: flex-start; gap: 15px;">
-                            <span style="font-size: 30px;">🚨</span>
-                            <div>
-                                <strong style="font-size: 16px;">تحذير خطير!</strong><br>
-                                المجلة "<strong>${escapeHtml(journalName)}</strong>" موجودة في <strong>القائمة السوداء لوزارة التعليم العالي العراقية</strong><br>
-                                <strong>❌ لا يعتد بها للأغراض الترقية والتقييم الأكاديمي.</strong>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
+            let html = `
+                <div class="section" style="background: #f8f9fa;">
+                    <div class="section-title">🛡️ تدقيق المجلة في القوائم السوداء</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
+            `;
             
+            // بطاقة قائمة بيل (Beall's List)
             if (blacklistStatus.inBeall) {
                 html += `
-                    <div class="danger-message" style="border-right-color:#ffc107; background:#fff3cd; margin-bottom:15px;">
-                        <div style="display: flex; align-items: flex-start; gap: 15px;">
-                            <span style="font-size: 30px;">⚠️</span>
-                            <div>
-                                <strong style="font-size: 16px; color:#856404;">تحذير! مجلة مفترسة</strong><br>
-                                المجلة "<strong>${escapeHtml(journalName)}</strong>" موجودة في <strong>قائمة بيل للمجلات المفترسة</strong><br>
-                                <strong>❌ لا ينصح بالنشر فيها.</strong>
+                    <div class="blacklist-card beall">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 36px;">⚠️</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #856404; font-size: 18px;">📋 قائمة بيل (Beall's List)</div>
+                                <div style="color: #856404; font-size: 15px; margin-top: 5px;">❌ المجلة مفهرسة ضمن قائمة المجلات المفترسة</div>
+                                <div style="color: #856404; font-size: 13px; margin-top: 8px;">⚠️ لا ينصح بالنشر في هذه المجلة</div>
+                                <div style="color: #856404; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">المجلات المفترسة (Predatory Journals) هي مجلات وهمية تهدف للربع المادي دون معايير علمية</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="blacklist-card safe">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 36px;">✅</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #155724; font-size: 18px;">📋 قائمة بيل (Beall's List)</div>
+                                <div style="color: #155724; font-size: 15px; margin-top: 5px;">✓ المجلة غير مفهرسة ضمن قائمة المجلات المفترسة</div>
+                                <div style="color: #155724; font-size: 13px; margin-top: 8px;">✓ آمنة - لا توجد مخاوف من predatory journal</div>
+                                <div style="color: #155724; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">المجلة لا تظهر في قائمة بيل للمجلات الوهمية</div>
                             </div>
                         </div>
                     </div>
                 `;
             }
             
-            if (!blacklistStatus.inBeall && !blacklistStatus.inIraq && journalName) {
+            // بطاقة القائمة السوداء العراقية
+            if (blacklistStatus.inIraq) {
                 html += `
-                    <div class="safe-message" style="margin-bottom:15px;">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <span style="font-size: 24px;">✅</span>
-                            <div>
-                                <strong>المجلة آمنة</strong><br>
-                                المجلة "<strong>${escapeHtml(journalName)}</strong>" غير موجودة في القوائم السوداء.
+                    <div class="blacklist-card iraq">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 36px;">🚨</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #721c24; font-size: 18px;">🇮🇶 القائمة السوداء العراقية</div>
+                                <div style="color: #721c24; font-size: 15px; margin-top: 5px;">❌ المجلة موجودة في القائمة السوداء لوزارة التعليم العالي العراقية</div>
+                                <div style="color: #721c24; font-size: 13px; margin-top: 8px;">🚫 لا يعتد بها للأغراض الترقية والتقييم الأكاديمي</div>
+                                <div style="color: #721c24; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">النشر في هذه المجلة لا يحسب ضمن النشاطات العلمية المعتمدة</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="blacklist-card safe">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 36px;">✅</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #155724; font-size: 18px;">🇮🇶 القائمة السوداء العراقية</div>
+                                <div style="color: #155724; font-size: 15px; margin-top: 5px;">✓ المجلة غير موجودة في القائمة السوداء العراقية</div>
+                                <div style="color: #155724; font-size: 13px; margin-top: 8px;">✓ معتمدة ومعترف بها للأغراض الأكاديمية</div>
+                                <div style="color: #155724; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">النشر في هذه المجلة يحسب ضمن النشاطات العلمية المعتمدة</div>
                             </div>
                         </div>
                     </div>
                 `;
             }
+            
+            html += `</div></div>`;
             
             return html;
         }
@@ -877,9 +918,9 @@
             const source = work.primary_location?.source || work.primary_source;
             const journalName = source?.display_name || null;
             
-            // عرض حالة القوائم السوداء للمجلة
+            // عرض بطاقات القوائم السوداء بشكل واضح
             if (journalName) {
-                html += renderBlacklistStatusForJournal(journalName);
+                html += renderBlacklistStatusCards(journalName);
             }
             
             // جلب معلومات Scopus من ISSN
