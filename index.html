@@ -454,7 +454,7 @@
                 </div>
                 
                 <div class="input-group">
-                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="Discover Internet of Things">
+                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="1818-1171">
                     <button onclick="searchJournal()">🔍 فحص</button>
                 </div>
                 
@@ -466,7 +466,7 @@
                     📝 أمثلة: 
                     <span onclick="setExampleAndType('10.1007/s43926-025-00124-6', 'work')">🔬 بحث (DOI)</span> •
                     <span onclick="setExampleAndType('Discover Internet of Things', 'journal')">📚 مجلة (Discover IoT)</span> •
-                    <span onclick="setExampleAndType('2772-6682', 'journal')">📰 ISSN</span> •
+                    <span onclick="setExampleAndType('1818-1171', 'journal')">📰 ISSN (الخوارزمي)</span> •
                     <span onclick="setExampleAndType('bibliometrix', 'work')">📝 بحث (كلمة)</span> •
                     <span onclick="setExampleAndType('IEEE Transactions on Instrumentation and Measurement', 'journal')">📡 مجلة قديمة</span>
                 </div>
@@ -723,7 +723,7 @@
             }
         }
         
-        // دالة محسنة لعرض معلومات Scopus للمجلة (عند البحث عن مجلة)
+        // دالة محسنة لعرض معلومات Scopus للمجلة مع حالة التغطية
         function renderScopusJournalStatus(scopusEntry, journalName) {
             if (!scopusEntry) {
                 return `
@@ -741,59 +741,72 @@
                              scopusEntry['citeScoreCurrentMetric'] || 'غير متوفر';
             const citeScoreYear = scopusEntry['citeScoreYearInfoList']?.['citeScoreCurrentMetricYear'] || '2024';
             
-            // معالجة سنوات التغطية
-            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
-                coverageEnd = 'الآن';
-            }
-            
-            // تحديد حالة التغطية
+            const currentYear = new Date().getFullYear();
+            let isActive = false;
             let coverageStatus = '';
             let statusColor = '';
             let statusIcon = '';
+            let coveragePeriodText = '';
+            let endYearDisplay = coverageEnd;
             
-            if (coverageEnd === 'الآن') {
-                const startYear = parseInt(coverageStart);
-                if (!isNaN(startYear)) {
-                    const duration = new Date().getFullYear() - startYear;
-                    coverageStatus = `✅ مستمرة حتى الآن (${duration} سنة تغطية مستمرة)`;
-                    statusColor = '#28a745';
-                    statusIcon = '✅';
-                } else {
-                    coverageStatus = '✅ مستمرة حتى الآن';
-                    statusColor = '#28a745';
-                    statusIcon = '✅';
-                }
-            } else {
-                const endYear = parseInt(coverageEnd);
-                const currentYear = new Date().getFullYear();
-                if (!isNaN(endYear) && endYear < currentYear - 1) {
-                    coverageStatus = `⚠️ خرجت من التغطية منذ ${currentYear - endYear} سنوات (آخر تغطية: ${coverageEnd})`;
-                    statusColor = '#dc3545';
-                    statusIcon = '⚠️';
-                } else if (!isNaN(endYear) && endYear < currentYear) {
-                    coverageStatus = `⚠️ توقفت عن التغطية منذ سنة (آخر تغطية: ${coverageEnd})`;
-                    statusColor = '#ffc107';
-                    statusIcon = '⚠️';
-                } else {
-                    coverageStatus = `📅 انتهت التغطية في ${coverageEnd}`;
-                    statusColor = '#6c757d';
-                    statusIcon = '📅';
-                }
+            // معالجة سنة النهاية
+            let endYearNum = null;
+            if (coverageEnd && coverageEnd !== 'present' && coverageEnd !== 'current' && coverageEnd !== '') {
+                endYearNum = parseInt(coverageEnd);
             }
             
-            let coveragePeriodText = '';
-            if (coverageStart !== 'غير متوفر' && coverageEnd !== 'الآن' && coverageEnd !== 'غير متوفر') {
-                const startYear = parseInt(coverageStart);
-                const endYear = parseInt(coverageEnd);
-                if (!isNaN(startYear) && !isNaN(endYear)) {
-                    const duration = endYear - startYear;
-                    coveragePeriodText = ` (${duration} سنة إجمالي التغطية)`;
+            // تحديد حالة التغطية
+            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
+                // الحالة: تغطية مستمرة (Scopus يرسل present)
+                isActive = true;
+                coverageStatus = 'مستمرة حتى الآن';
+                statusColor = '#28a745';
+                statusIcon = '✅';
+                endYearDisplay = 'الآن';
+            } 
+            else if (endYearNum !== null && !isNaN(endYearNum)) {
+                if (endYearNum >= currentYear) {
+                    // الحالة: سنة النهاية هي السنة الحالية أو مستقبلية
+                    isActive = true;
+                    coverageStatus = `✅ مستمرة حتى الآن (آخر تحديث: ${coverageEnd})`;
+                    statusColor = '#28a745';
+                    statusIcon = '✅';
+                    endYearDisplay = `الآن (آخر تحديث: ${coverageEnd})`;
+                } 
+                else if (endYearNum === currentYear - 1) {
+                    // الحالة: توقفت منذ سنة
+                    isActive = false;
+                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ سنة واحدة)`;
+                    statusColor = '#ffc107';
+                    statusIcon = '⚠️';
+                } 
+                else if (endYearNum < currentYear - 1) {
+                    // الحالة: توقفت منذ سنوات
+                    const yearsAgo = currentYear - endYearNum;
+                    isActive = false;
+                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ ${yearsAgo} سنوات)`;
+                    statusColor = '#dc3545';
+                    statusIcon = '⚠️';
                 }
-            } else if (coverageStart !== 'غير متوفر' && coverageEnd === 'الآن') {
+            }
+            else {
+                // حالة غير معروفة
+                coverageStatus = `انتهت التغطية في ${coverageEnd}`;
+                statusColor = '#6c757d';
+                statusIcon = '📅';
+            }
+            
+            // حساب فترة التغطية
+            if (coverageStart !== 'غير متوفر') {
                 const startYear = parseInt(coverageStart);
                 if (!isNaN(startYear)) {
-                    const duration = new Date().getFullYear() - startYear;
-                    coveragePeriodText = ` (${duration} سنة تغطية مستمرة)`;
+                    if (isActive) {
+                        const duration = currentYear - startYear;
+                        coveragePeriodText = ` (${duration} سنة تغطية مستمرة)`;
+                    } else if (endYearNum !== null && !isNaN(endYearNum)) {
+                        const duration = endYearNum - startYear;
+                        coveragePeriodText = ` (${duration} سنة إجمالي التغطية)`;
+                    }
                 }
             }
             
@@ -803,9 +816,10 @@
                         <span style="font-size: 24px;">📊</span>
                         <strong style="font-size: 16px;">Scopus (سكوبس)</strong>
                         <span class="badge" style="background:#0079c1;">مفهرسة</span>
+                        ${isActive ? '<span class="badge" style="background:#28a745;">✓ تغطية مستمرة</span>' : '<span class="badge" style="background:#dc3545;">✗ توقفت التغطية</span>'}
                     </div>
                     <div style="margin-top: 10px;">
-                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${coverageEnd}${coveragePeriodText}</div>
+                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${endYearDisplay}${coveragePeriodText}</div>
                         <div><strong>📈 حالة التغطية:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${coverageStatus}</span></div>
                         <div><strong>📈 CiteScore:</strong> ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'} (${citeScoreYear})</div>
                         <div><strong>🏛️ الناشر:</strong> ${escapeHtml(publisher)}</div>
@@ -832,45 +846,58 @@
                              scopusInfo['citeScoreCurrentMetric'] || 'غير متوفر';
             const citeScoreYear = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetricYear'] || '2024';
             
-            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
-                coverageEnd = 'الآن';
-            }
-            
+            const currentYear = new Date().getFullYear();
+            let isActive = false;
             let coverageStatus = '';
             let statusColor = '';
             let statusIcon = '';
+            let coveragePeriodText = '';
+            let endYearDisplay = coverageEnd;
             
-            if (coverageEnd === 'الآن') {
+            let endYearNum = null;
+            if (coverageEnd && coverageEnd !== 'present' && coverageEnd !== 'current' && coverageEnd !== '') {
+                endYearNum = parseInt(coverageEnd);
+            }
+            
+            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
+                isActive = true;
                 coverageStatus = 'مستمرة حتى الآن';
                 statusColor = '#28a745';
                 statusIcon = '✅';
-            } else {
-                const endYear = parseInt(coverageEnd);
-                const currentYear = new Date().getFullYear();
-                if (!isNaN(endYear) && endYear < currentYear - 1) {
-                    coverageStatus = `⚠️ خرجت من التغطية منذ ${currentYear - endYear} سنوات (آخر تغطية: ${coverageEnd})`;
+                endYearDisplay = 'الآن';
+            } 
+            else if (endYearNum !== null && !isNaN(endYearNum)) {
+                if (endYearNum >= currentYear) {
+                    isActive = true;
+                    coverageStatus = `✅ مستمرة حتى الآن (آخر تحديث: ${coverageEnd})`;
+                    statusColor = '#28a745';
+                    statusIcon = '✅';
+                    endYearDisplay = `الآن (آخر تحديث: ${coverageEnd})`;
+                } 
+                else if (endYearNum === currentYear - 1) {
+                    isActive = false;
+                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ سنة واحدة)`;
+                    statusColor = '#ffc107';
+                    statusIcon = '⚠️';
+                } 
+                else if (endYearNum < currentYear - 1) {
+                    const yearsAgo = currentYear - endYearNum;
+                    isActive = false;
+                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ ${yearsAgo} سنوات)`;
                     statusColor = '#dc3545';
                     statusIcon = '⚠️';
-                } else {
-                    coverageStatus = `انتهت التغطية في ${coverageEnd}`;
-                    statusColor = '#ffc107';
-                    statusIcon = '📅';
                 }
             }
             
-            let coverageYearsText = '';
             if (coverageStart !== 'غير متوفر') {
                 const startYear = parseInt(coverageStart);
                 if (!isNaN(startYear)) {
-                    if (coverageEnd === 'الآن') {
-                        const duration = new Date().getFullYear() - startYear;
-                        coverageYearsText = ` (${duration} سنة من التغطية المستمرة)`;
-                    } else {
-                        const endYear = parseInt(coverageEnd);
-                        if (!isNaN(endYear)) {
-                            const duration = endYear - startYear;
-                            coverageYearsText = ` (${duration} سنة إجمالي التغطية)`;
-                        }
+                    if (isActive) {
+                        const duration = currentYear - startYear;
+                        coveragePeriodText = ` (${duration} سنة تغطية مستمرة)`;
+                    } else if (endYearNum !== null && !isNaN(endYearNum)) {
+                        const duration = endYearNum - startYear;
+                        coveragePeriodText = ` (${duration} سنة إجمالي التغطية)`;
                     }
                 }
             }
@@ -881,9 +908,10 @@
                         <span style="font-size: 24px;">📊</span>
                         <strong style="font-size: 16px;">Scopus (سكوبس)</strong>
                         <span class="badge" style="background:#0079c1;">مفهرسة</span>
+                        ${isActive ? '<span class="badge" style="background:#28a745;">✓ تغطية مستمرة</span>' : '<span class="badge" style="background:#dc3545;">✗ توقفت التغطية</span>'}
                     </div>
                     <div style="margin-top: 10px;">
-                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${coverageEnd}${coverageYearsText}</div>
+                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${endYearDisplay}${coveragePeriodText}</div>
                         <div><strong>📈 حالة التغطية:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${coverageStatus}</span></div>
                         <div><strong>📈 CiteScore:</strong> ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'} (${citeScoreYear})</div>
                         <div><strong>🏛️ الناشر:</strong> ${escapeHtml(publisher)}</div>
@@ -1029,7 +1057,6 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
-        // دالة عرض المعلومات المتقدمة من OpenAlex مع دمج Scopus والقوائم السوداء
         async function renderAdvancedWorkInfoWithScopus(work) {
             let html = '';
             
