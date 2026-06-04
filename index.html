@@ -454,7 +454,7 @@
                 </div>
                 
                 <div class="input-group">
-                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="1818-1171">
+                    <input type="text" id="searchInput" placeholder="أدخل DOI / ISSN / عنوان المجلة / عنوان البحث" dir="ltr" value="An investigation on real-time insights: enhancing process control with IoT-enabled sensor networks">
                     <button onclick="searchJournal()">🔍 فحص</button>
                 </div>
                 
@@ -465,10 +465,10 @@
                 <div class="example">
                     📝 أمثلة: 
                     <span onclick="setExampleAndType('10.1007/s43926-025-00124-6', 'work')">🔬 بحث (DOI)</span> •
-                    <span onclick="setExampleAndType('Discover Internet of Things', 'journal')">📚 مجلة (Discover IoT)</span> •
-                    <span onclick="setExampleAndType('1818-1171', 'journal')">📰 ISSN (الخوارزمي)</span> •
+                    <span onclick="setExampleAndType('New England Journal of Medicine', 'journal')">📚 مجلة (NEJM)</span> •
+                    <span onclick="setExampleAndType('2772-6682', 'journal')">📰 ISSN</span> •
                     <span onclick="setExampleAndType('bibliometrix', 'work')">📝 بحث (كلمة)</span> •
-                    <span onclick="setExampleAndType('IEEE Transactions on Instrumentation and Measurement', 'journal')">📡 مجلة قديمة</span>
+                    <span onclick="setExampleAndType('Sensor technology advances and future trends', 'work')">📡 بحث دقيق</span>
                 </div>
                 <div id="listsStatus" class="list-status">🔄 جاري تحميل القوائم...</div>
             </div>
@@ -533,6 +533,7 @@
             return html;
         }
         
+        // دالة فحص المجلة في القوائم السوداء
         function checkJournalInBlacklists(journalName) {
             if (!journalName) return { inBeall: false, inIraq: false };
             const normalizedName = normalizeSimple(journalName);
@@ -542,6 +543,7 @@
             };
         }
         
+        // دالة عرض بطاقات القوائم السوداء بشكل واضح
         function renderBlacklistStatusCards(journalName) {
             if (!journalName) return '';
             
@@ -553,6 +555,7 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px;">
             `;
             
+            // بطاقة قائمة بيل (Beall's List)
             if (blacklistStatus.inBeall) {
                 html += `
                     <div class="blacklist-card beall">
@@ -562,6 +565,7 @@
                                 <div style="font-weight: bold; color: #856404; font-size: 18px;">📋 قائمة بيل (Beall's List)</div>
                                 <div style="color: #856404; font-size: 15px; margin-top: 5px;">❌ المجلة مفهرسة ضمن قائمة المجلات المفترسة</div>
                                 <div style="color: #856404; font-size: 13px; margin-top: 8px;">⚠️ لا ينصح بالنشر في هذه المجلة</div>
+                                <div style="color: #856404; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">المجلات المفترسة (Predatory Journals) هي مجلات وهمية تهدف للربع المادي دون معايير علمية</div>
                             </div>
                         </div>
                     </div>
@@ -575,12 +579,14 @@
                                 <div style="font-weight: bold; color: #155724; font-size: 18px;">📋 قائمة بيل (Beall's List)</div>
                                 <div style="color: #155724; font-size: 15px; margin-top: 5px;">✓ المجلة غير مفهرسة ضمن قائمة المجلات المفترسة</div>
                                 <div style="color: #155724; font-size: 13px; margin-top: 8px;">✓ آمنة - لا توجد مخاوف من predatory journal</div>
+                                <div style="color: #155724; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">المجلة لا تظهر في قائمة بيل للمجلات الوهمية</div>
                             </div>
                         </div>
                     </div>
                 `;
             }
             
+            // بطاقة القائمة السوداء العراقية
             if (blacklistStatus.inIraq) {
                 html += `
                     <div class="blacklist-card iraq">
@@ -590,6 +596,7 @@
                                 <div style="font-weight: bold; color: #721c24; font-size: 18px;">🇮🇶 القائمة السوداء العراقية</div>
                                 <div style="color: #721c24; font-size: 15px; margin-top: 5px;">❌ المجلة موجودة في القائمة السوداء لوزارة التعليم العالي العراقية</div>
                                 <div style="color: #721c24; font-size: 13px; margin-top: 8px;">🚫 لا يعتد بها للأغراض الترقية والتقييم الأكاديمي</div>
+                                <div style="color: #721c24; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">النشر في هذه المجلة لا يحسب ضمن النشاطات العلمية المعتمدة</div>
                             </div>
                         </div>
                     </div>
@@ -603,6 +610,7 @@
                                 <div style="font-weight: bold; color: #155724; font-size: 18px;">🇮🇶 القائمة السوداء العراقية</div>
                                 <div style="color: #155724; font-size: 15px; margin-top: 5px;">✓ المجلة غير موجودة في القائمة السوداء العراقية</div>
                                 <div style="color: #155724; font-size: 13px; margin-top: 8px;">✓ معتمدة ومعترف بها للأغراض الأكاديمية</div>
+                                <div style="color: #155724; font-size: 12px; margin-top: 10px; background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 8px;">النشر في هذه المجلة يحسب ضمن النشاطات العلمية المعتمدة</div>
                             </div>
                         </div>
                     </div>
@@ -723,112 +731,6 @@
             }
         }
         
-        // دالة محسنة لعرض معلومات Scopus للمجلة مع حالة التغطية
-        function renderScopusJournalStatus(scopusEntry, journalName) {
-            if (!scopusEntry) {
-                return `
-                    <div class="info-warning" style="margin-bottom:15px;">
-                        ⚠️ المجلة غير مفهرسة في قاعدة بيانات Scopus
-                    </div>
-                `;
-            }
-            
-            const issn = scopusEntry['prism:issn'] || 'غير متوفر';
-            let coverageStart = scopusEntry['coverageStartYear'] || scopusEntry['coverage-start-year']?.['$'] || 'غير متوفر';
-            let coverageEnd = scopusEntry['coverageEndYear'] || scopusEntry['coverage-end-year']?.['$'] || 'غير متوفر';
-            const publisher = scopusEntry['dc:publisher'] || 'غير متوفر';
-            const citeScore = scopusEntry['citeScoreYearInfoList']?.['citeScoreCurrentMetric'] || 
-                             scopusEntry['citeScoreCurrentMetric'] || 'غير متوفر';
-            const citeScoreYear = scopusEntry['citeScoreYearInfoList']?.['citeScoreCurrentMetricYear'] || '2024';
-            
-            const currentYear = new Date().getFullYear();
-            let isActive = false;
-            let coverageStatus = '';
-            let statusColor = '';
-            let statusIcon = '';
-            let coveragePeriodText = '';
-            let endYearDisplay = coverageEnd;
-            
-            // معالجة سنة النهاية
-            let endYearNum = null;
-            if (coverageEnd && coverageEnd !== 'present' && coverageEnd !== 'current' && coverageEnd !== '') {
-                endYearNum = parseInt(coverageEnd);
-            }
-            
-            // تحديد حالة التغطية
-            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
-                // الحالة: تغطية مستمرة (Scopus يرسل present)
-                isActive = true;
-                coverageStatus = 'مستمرة حتى الآن';
-                statusColor = '#28a745';
-                statusIcon = '✅';
-                endYearDisplay = 'الآن';
-            } 
-            else if (endYearNum !== null && !isNaN(endYearNum)) {
-                if (endYearNum >= currentYear) {
-                    // الحالة: سنة النهاية هي السنة الحالية أو مستقبلية
-                    isActive = true;
-                    coverageStatus = `✅ مستمرة حتى الآن (آخر تحديث: ${coverageEnd})`;
-                    statusColor = '#28a745';
-                    statusIcon = '✅';
-                    endYearDisplay = `الآن (آخر تحديث: ${coverageEnd})`;
-                } 
-                else if (endYearNum === currentYear - 1) {
-                    // الحالة: توقفت منذ سنة
-                    isActive = false;
-                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ سنة واحدة)`;
-                    statusColor = '#ffc107';
-                    statusIcon = '⚠️';
-                } 
-                else if (endYearNum < currentYear - 1) {
-                    // الحالة: توقفت منذ سنوات
-                    const yearsAgo = currentYear - endYearNum;
-                    isActive = false;
-                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ ${yearsAgo} سنوات)`;
-                    statusColor = '#dc3545';
-                    statusIcon = '⚠️';
-                }
-            }
-            else {
-                // حالة غير معروفة
-                coverageStatus = `انتهت التغطية في ${coverageEnd}`;
-                statusColor = '#6c757d';
-                statusIcon = '📅';
-            }
-            
-            // حساب فترة التغطية
-            if (coverageStart !== 'غير متوفر') {
-                const startYear = parseInt(coverageStart);
-                if (!isNaN(startYear)) {
-                    if (isActive) {
-                        const duration = currentYear - startYear;
-                        coveragePeriodText = ` (${duration} سنة تغطية مستمرة)`;
-                    } else if (endYearNum !== null && !isNaN(endYearNum)) {
-                        const duration = endYearNum - startYear;
-                        coveragePeriodText = ` (${duration} سنة إجمالي التغطية)`;
-                    }
-                }
-            }
-            
-            return `
-                <div class="scopus-info">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                        <span style="font-size: 24px;">📊</span>
-                        <strong style="font-size: 16px;">Scopus (سكوبس)</strong>
-                        <span class="badge" style="background:#0079c1;">مفهرسة</span>
-                        ${isActive ? '<span class="badge" style="background:#28a745;">✓ تغطية مستمرة</span>' : '<span class="badge" style="background:#dc3545;">✗ توقفت التغطية</span>'}
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${endYearDisplay}${coveragePeriodText}</div>
-                        <div><strong>📈 حالة التغطية:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${coverageStatus}</span></div>
-                        <div><strong>📈 CiteScore:</strong> ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'} (${citeScoreYear})</div>
-                        <div><strong>🏛️ الناشر:</strong> ${escapeHtml(publisher)}</div>
-                        <div><strong>🔗 <a href="https://www.scopus.com/sources.uri?issn=${issn}" target="_blank">عرض المجلة في Scopus →</a></strong></div>
-                    </div>
-                </div>
-            `;
-        }
-        
         function renderScopusStatus(scopusInfo, journalName = null) {
             if (!scopusInfo) {
                 return `
@@ -839,66 +741,20 @@
             }
             
             const issn = scopusInfo['prism:issn'] || 'غير متوفر';
-            let coverageStart = scopusInfo['coverageStartYear'] || scopusInfo['coverage-start-year']?.['$'] || 'غير متوفر';
-            let coverageEnd = scopusInfo['coverageEndYear'] || scopusInfo['coverage-end-year']?.['$'] || 'غير متوفر';
+            const coverageStart = scopusInfo['coverageStartYear'] || scopusInfo['coverage-start-year']?.['$'] || 'غير متوفر';
+            const coverageEnd = scopusInfo['coverageEndYear'] || scopusInfo['coverage-end-year']?.['$'] || 'غير متوفر';
             const publisher = scopusInfo['dc:publisher'] || 'غير متوفر';
             const citeScore = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetric'] || 
                              scopusInfo['citeScoreCurrentMetric'] || 'غير متوفر';
             const citeScoreYear = scopusInfo['citeScoreYearInfoList']?.['citeScoreCurrentMetricYear'] || '2024';
             
-            const currentYear = new Date().getFullYear();
-            let isActive = false;
-            let coverageStatus = '';
-            let statusColor = '';
-            let statusIcon = '';
-            let coveragePeriodText = '';
-            let endYearDisplay = coverageEnd;
-            
-            let endYearNum = null;
-            if (coverageEnd && coverageEnd !== 'present' && coverageEnd !== 'current' && coverageEnd !== '') {
-                endYearNum = parseInt(coverageEnd);
-            }
-            
-            if (coverageEnd === 'present' || coverageEnd === 'current' || coverageEnd === '' || !coverageEnd) {
-                isActive = true;
-                coverageStatus = 'مستمرة حتى الآن';
-                statusColor = '#28a745';
-                statusIcon = '✅';
-                endYearDisplay = 'الآن';
-            } 
-            else if (endYearNum !== null && !isNaN(endYearNum)) {
-                if (endYearNum >= currentYear) {
-                    isActive = true;
-                    coverageStatus = `✅ مستمرة حتى الآن (آخر تحديث: ${coverageEnd})`;
-                    statusColor = '#28a745';
-                    statusIcon = '✅';
-                    endYearDisplay = `الآن (آخر تحديث: ${coverageEnd})`;
-                } 
-                else if (endYearNum === currentYear - 1) {
-                    isActive = false;
-                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ سنة واحدة)`;
-                    statusColor = '#ffc107';
-                    statusIcon = '⚠️';
-                } 
-                else if (endYearNum < currentYear - 1) {
-                    const yearsAgo = currentYear - endYearNum;
-                    isActive = false;
-                    coverageStatus = `⚠️ توقفت التغطية في سنة ${coverageEnd} (منذ ${yearsAgo} سنوات)`;
-                    statusColor = '#dc3545';
-                    statusIcon = '⚠️';
-                }
-            }
-            
+            let coverageYearsText = '';
             if (coverageStart !== 'غير متوفر') {
+                const currentYear = new Date().getFullYear();
                 const startYear = parseInt(coverageStart);
                 if (!isNaN(startYear)) {
-                    if (isActive) {
-                        const duration = currentYear - startYear;
-                        coveragePeriodText = ` (${duration} سنة تغطية مستمرة)`;
-                    } else if (endYearNum !== null && !isNaN(endYearNum)) {
-                        const duration = endYearNum - startYear;
-                        coveragePeriodText = ` (${duration} سنة إجمالي التغطية)`;
-                    }
+                    const duration = currentYear - startYear;
+                    coverageYearsText = ` (${duration} سنة من التغطية المستمرة)`;
                 }
             }
             
@@ -908,11 +764,9 @@
                         <span style="font-size: 24px;">📊</span>
                         <strong style="font-size: 16px;">Scopus (سكوبس)</strong>
                         <span class="badge" style="background:#0079c1;">مفهرسة</span>
-                        ${isActive ? '<span class="badge" style="background:#28a745;">✓ تغطية مستمرة</span>' : '<span class="badge" style="background:#dc3545;">✗ توقفت التغطية</span>'}
                     </div>
                     <div style="margin-top: 10px;">
-                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${endYearDisplay}${coveragePeriodText}</div>
-                        <div><strong>📈 حالة التغطية:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusIcon} ${coverageStatus}</span></div>
+                        <div><strong>📅 سنوات التغطية:</strong> ${coverageStart} - ${coverageEnd === 'present' ? 'مستمرة' : coverageEnd}${coverageYearsText}</div>
                         <div><strong>📈 CiteScore:</strong> ${citeScore !== 'غير متوفر' ? citeScore : 'غير متوفر'} (${citeScoreYear})</div>
                         <div><strong>🏛️ الناشر:</strong> ${escapeHtml(publisher)}</div>
                         <div><strong>🔗 <a href="https://www.scopus.com/sources.uri?issn=${issn}" target="_blank">عرض المجلة في Scopus →</a></strong></div>
@@ -1057,21 +911,25 @@
             return `<span class="open-access-badge ${className}">${text}</span>`;
         }
 
+        // دالة عرض المعلومات المتقدمة من OpenAlex مع دمج Scopus والقوائم السوداء
         async function renderAdvancedWorkInfoWithScopus(work) {
             let html = '';
             
             const source = work.primary_location?.source || work.primary_source;
             const journalName = source?.display_name || null;
             
+            // عرض بطاقات القوائم السوداء بشكل واضح
             if (journalName) {
                 html += renderBlacklistStatusCards(journalName);
             }
             
+            // جلب معلومات Scopus من ISSN
             let scopusInfo = null;
             if (source && source.issn_l) {
                 scopusInfo = await getScopusJournalInfo(source.issn_l);
             }
             
+            // عرض حالة Scopus مع CiteScore وسنوات التغطية
             if (scopusInfo) {
                 html += renderScopusStatus(scopusInfo, journalName);
             } else {
@@ -1082,6 +940,7 @@
                 `;
             }
             
+            // المجلة المصدر من OpenAlex
             if (source) {
                 html += `
                     <div class="section">
@@ -1097,6 +956,7 @@
                 `;
             }
             
+            // مقاييس التأثير
             const percentile = work.citation_normalized_percentile;
             const fwci = work.fwci;
             html += `
@@ -1125,6 +985,7 @@
                 </div>
             `;
             
+            // تفاصيل النشر
             if (work.biblio && (work.biblio.volume || work.biblio.issue || work.biblio.first_page)) {
                 html += `
                     <div class="section">
@@ -1138,6 +999,7 @@
                 `;
             }
             
+            // الموضوع الأساسي
             if (work.primary_topic) {
                 html += `
                     <div class="section">
@@ -1151,6 +1013,7 @@
                 `;
             }
             
+            // المواضيع الرئيسية
             if (work.topics && work.topics.length > 0) {
                 html += `
                     <div class="section">
@@ -1168,6 +1031,7 @@
                 html += `</div></div>`;
             }
             
+            // الكلمات المفتاحية
             if (work.keywords && work.keywords.length > 0) {
                 html += `
                     <div class="section">
@@ -1180,6 +1044,7 @@
                 html += `</div></div>`;
             }
             
+            // أهداف التنمية المستدامة
             if (work.sustainable_development_goals && work.sustainable_development_goals.length > 0) {
                 html += `
                     <div class="section">
@@ -1192,6 +1057,7 @@
                 html += `</div></div>`;
             }
             
+            // المؤلف المراسل
             const correspondingAuthor = work.authorships?.find(a => a.is_corresponding);
             if (correspondingAuthor) {
                 html += `
@@ -1207,6 +1073,7 @@
                 `;
             }
             
+            // الاقتباسات حسب السنة
             if (work.counts_by_year && work.counts_by_year.length > 0) {
                 const recentYears = work.counts_by_year.slice(0, 5);
                 html += `
@@ -1225,6 +1092,7 @@
                 html += `</div></div>`;
             }
             
+            // حالة الوصول المفتوح
             if (work.open_access) {
                 const oaStatus = work.open_access.oa_status || 'closed';
                 html += `
@@ -1274,6 +1142,7 @@
                 `;
             }
             
+            // عرض المعلومات المتقدمة مع Scopus والقوائم السوداء
             const advancedInfo = await renderAdvancedWorkInfoWithScopus(work);
             html += advancedInfo;
             
@@ -1308,6 +1177,7 @@
                 `;
             }
             
+            // إصلاح رابط DOI المكرر
             let cleanDoi = work.doi;
             if (cleanDoi && cleanDoi.startsWith('https://doi.org/')) {
                 cleanDoi = cleanDoi.replace('https://doi.org/', '');
@@ -1775,7 +1645,7 @@
                     </div>
                     
                     <div id="tab-scopus" class="tab-content ${!hasOpenAlex && scopusEntry ? 'active' : ''}">
-                        ${scopusEntry ? renderScopusJournalStatus(scopusEntry, journalTitle) : '<div class="not-found-box"><p>❌ غير مفهرسة في Scopus</p></div>'}
+                        ${scopusEntry ? renderScopusContent(scopusEntry) : '<div class="not-found-box"><p>❌ غير مفهرسة في Scopus</p></div>'}
                     </div>
                     
                     <div id="tab-doaj" class="tab-content">
